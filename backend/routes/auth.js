@@ -1,52 +1,80 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/user');
-
+const express = require("express");
+const bcrypt = require("bcrypt"); // Ensure it's bcrypt, NOT bcryptjs
+const jwt = require("jsonwebtoken");
+const User = require("../models/user");
+require("dotenv").config();
 const router = express.Router();
 
-// Signup Route
+// ✅ Signup Route
 router.post("/signup", async (req, res) => {
-    const { name, email, password } = req.body;
+  const { name, email, password } = req.body;
   
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
-    }
-  
-    try {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ success: false, message: "Email already exists" });
+  try {
+      let user = await User.findOne({ email });
+      if (user) {
+          return res.status(400).json({ message: "User already exists" });
       }
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = new User({ name, email, password: hashedPassword });
-      await newUser.save();
-  
-      res.status(201).json({ success: true, message: "User registered successfully" });
-    } catch (error) {
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-  });
-// Login Route
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      console.log("Plain Password:", password);
+      console.log("Hashed Password:", hashedPassword);
+
+      user = new User({
+          name,
+          email,
+          password: hashedPassword,
+      });
+
+      await user.save();
+      res.status(201).json({ message: "User registered successfully" });
+
+  } catch (err) {
+      console.error("Signup Error:", err);
+      res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
+// ✅ Login Route
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-  
-    try {
+  const { email, password } = req.body;
+  console.log("Login Attempt:", email, password); // Debug log ✅
+
+  try {
       const user = await User.findOne({ email });
+
       if (!user) {
-        return res.status(400).json({ success: false, message: "Invalid credentials" });
+          console.log("User not found ❌");
+          return res.status(400).json({ message: "Invalid email or password" });
       }
-  
+
+      console.log("User Found:", user); // Debug log ✅
+      console.log("Stored Password in DB:", user.password); // Log hashed password in DB
+
+      console.log("Entered Password:", password);
+      console.log("Stored Hashed Password:", user.password);
+
       const isMatch = await bcrypt.compare(password, user.password);
+      console.log("Password Match Result:", isMatch);
+
+      console.log("Password Match:", isMatch); // Debug log ✅
+
       if (!isMatch) {
-        return res.status(400).json({ success: false, message: "Invalid credentials" });
+          console.log("Password incorrect ❌");
+          return res.status(400).json({ message: "Invalid email or password" });
       }
-  
-      const token = jwt.sign({ id: user._id }, "your_jwt_secret", { expiresIn: "1h" });
-      res.json({ success: true, token });
-    } catch (error) {
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-  });
+
+      res.json({ message: "Login successful!" });
+
+  } catch (err) {
+      console.error("Login Error:", err);
+      res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
 module.exports = router;

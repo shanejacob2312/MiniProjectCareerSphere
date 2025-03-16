@@ -1,0 +1,49 @@
+.template2 {
+    width: 210mm; /* A4 width */
+    height: 297mm; /* A4 height */
+    padding: 25px;
+    margin: auto;
+    background: #f7f7f7;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+    color: #222;
+  }
+  
+  .template2 h1 {
+    font-size: 26px;
+    text-align: left;
+    color: #0056b3;
+    border-bottom: 3px solid #0056b3;
+    padding-bottom: 5px;
+  }
+  
+  .template2 h2 {
+    font-size: 18px;
+    margin-top: 20px;
+    color: #333;
+    border-bottom: 2px solid #666;
+    padding-bottom: 4px;
+  }
+  
+  .template2 .info {
+    font-size: 14px;
+    margin-bottom: 15px;
+  }
+  
+  .template2 .section {
+    background: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .template2 ul {
+    list-style-type: disc;
+    padding-left: 20px;
+  }
+  
+  .template2 li {
+    margin: 5px 0;
+  }
+  

@@ -21,19 +21,28 @@ const Signup = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/signup", userData, {
-        headers: { "Content-Type": "application/json" },
-      });
+        const response = await fetch("http://localhost:5000/api/auth/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userData)  // ✅ Use state directly
+        });
 
-      if (response.data.success) {
-        navigate("/login"); // Redirect to login page upon success
-      } else {
-        setError(response.data.message || "Signup failed");
-      }
-    } catch (err) {
-      setError("Signup failed. Please check your details.");
+        const data = await response.json();
+
+        if (response.ok) {
+            console.log("Signup successful", data);
+            navigate("/dashboard");  // ✅ Redirect user on successful signup
+        } else {
+            console.error("Signup failed", data);
+            setError(data.error || "Signup failed");
+        }
+    } catch (error) {
+        console.error("Error during signup", error);
+        setError("Something went wrong. Please try again.");
     }
-  };
+};
+
+
 
   return (
     <div className="signup-container">
@@ -56,9 +65,6 @@ const Signup = () => {
             <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
             <button type="submit">Sign Up</button>
           </form>
-          <p>
-            Already have an account? <a href="/login">Login Here.</a>
-          </p>
         </div>
       </div>
     </div>

@@ -1,57 +1,83 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden; /* Prevents scrolling */
-  }
-  
-  .homepage-container {
-    display: flex;
-    width: 100vw;
-    height: 100vh;
-  }
-  
-  .left-section {
-    flex: 2;
-    background-color: #1149a2; /* Blue section */
-  }
-  
-  .right-section {
-    flex: 1;
-    background-color: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centers content horizontally */
-    justify-content: center; /* Centers content vertically */
-    position: relative;
-  }
-  
-  .logo {
-    width: 400px; /* Adjust as needed */
-    position: absolute;
-    top: 5px;
-    right: 50px;
-  }
-  
+/* Apply background image to the entire page */
+.homepage-container {
+  width: 100vw;
+  height: 100vh;
+  background-image: url('../assets/homepage.jpg'); /* Background image */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
 
-  .get-started-btn {
-    background-color: #e0e0e0;
-    border: none;
-    padding: 20px 80px;
-    border-radius: 40px;
-    font-size: 40px;
-    cursor: pointer;
-    position: absolute;
-    bottom: 20%; /* Moves the button to the lower third */
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  .get-started-btn:hover {
-    background-color: #d6d6d6;
-  }
-  
+/* Dark overlay for better readability */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6); /* Dark transparent overlay */
+}
+
+/* Login button styling */
+.login-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid white;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  text-decoration: none;
+}
+
+.login-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Centering the content */
+.content-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  width: 50%;
+}
+
+/* Headline styling */
+.content-box h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* Description text */
+.content-box p {
+  font-size: 1.2rem;
+  margin-bottom: 15px;
+}
+
+/* Get Started button */
+.get-started-btn {
+  padding: 12px 25px;
+  background-color: blue;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  text-decoration: none;
+}
+
+.get-started-btn:hover {
+  background-color: darkblue;
+}

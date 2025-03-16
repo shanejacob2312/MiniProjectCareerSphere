@@ -12,23 +12,38 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
+    setError("");
+  
+    console.log("Attempting login with:", { email, password });
+  
     try {
       const response = await axios.post("http://localhost:5000/api/auth/login", {
-        email,
-        password,
+        email: email.trim(), // Remove extra spaces
+        password: password.toString().trim(), // Ensure it's a string
       });
-
-      if (response.data.success) {
-        localStorage.setItem("token", response.data.token); // Store token
-        navigate("/dashboard"); // Redirect to dashboard
+      
+  
+      console.log("Login Response:", response.data);
+  
+      if (response.status === 200 && response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        navigate("/dashboard");
       } else {
-        setError("Invalid credentials. Please try again.");
+        setError(response.data.message || "Invalid credentials. Please try again.");
       }
     } catch (err) {
-      setError("Login failed. Check your credentials.");
+      console.error("Login Error:", err);
+  
+      if (err.response) {
+        console.log("Error Response Data:", err.response.data); // ✅ Log error details
+        setError(err.response.data.message || "Login failed. Check your credentials.");
+      } else {
+        setError("Server is unreachable. Try again later.");
+      }
     }
   };
+  
+  
 
   return (
     <div className="login-container">
@@ -54,6 +69,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="on"
             />
             <input
               type="password"
@@ -64,6 +80,12 @@ const Login = () => {
             />
             <button type="submit">Login</button>
           </form>
+          
+          {/* Forgot Password Button */}
+          <button className="forgot-password-btn" onClick={() => navigate("/forgotpassword")}>
+            Forgot Password?
+          </button>
+
           <p>
             Don't have an account? <a href="/signup">Sign Up Here.</a>
           </p>

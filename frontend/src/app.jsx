@@ -1,11 +1,14 @@
 import React from "react";
-import Dashboard from "./pages/dashboard";
+import { Routes, Route } from "react-router-dom";
+import HomePage from "./pages/homepage";
 import Login from "./pages/login";
 import Signup from "./pages/signup";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import HomePage from "./pages/homepage";
-import CreateResume from "./pages/createresume"; 
-import UploadResume from "./pages/uploadresume"; 
+import Dashboard from "./pages/dashboard";
+import ResumeInput from "./pages/resumeinput"; 
+import ResumeBuilder from "./pages/resumebuilder"; 
+import UploadResume from "./pages/uploadresume";
+import ForgotPassword from "./pages/forgotpassword";
+import AIAnalysis from "./pages/aianalysis";
 
 const App = () => {
   return (
@@ -13,10 +16,12 @@ const App = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/createresume" element={<CreateResume />} />
-      <Route path = "/uploadresume" element={<UploadResume />} />
+      <Route path="/resumeinput" element={<ResumeInput />} />
+      <Route path="/resumebuilder" element={<ResumeBuilder />} />
+      <Route path="/uploadresume" element={<UploadResume />} />
+      <Route path="/forgotpassword" element={<ForgotPassword />} />
+      <Route path="/aianalysis" element={<AIAnalysis />} />
     </Routes>
   );
 };

@@ -1,0 +1,70 @@
+.aianalysis-container {
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .resume-preview {
+    width: 60%;
+    margin: 20px auto;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+  }
+  
+  .resume-text {
+    white-space: pre-wrap;
+    text-align: left;
+    padding: 10px;
+    background: #fff;
+    border-radius: 5px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .analyze-btn {
+    padding: 10px 20px;
+    font-size: 18px;
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin: 10px;
+    transition: 0.3s;
+  }
+  
+  .analyze-btn:hover {
+    background: #0056b3;
+  }
+  
+  .analysis-sections {
+    text-align: left;
+    margin-top: 20px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 5px;
+    width: 70%;
+    margin: 20px auto;
+  }
+  
+  h2 {
+    color: #333;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  ul li {
+    background: #e9ecef;
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 3px;
+  }
+  
+  .score {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+  }
+  

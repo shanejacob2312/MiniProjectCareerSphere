@@ -1,0 +1,90 @@
+.resume-input-container {
+  width: 60%;
+  margin: 0 auto;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+}
+
+.input-group label {
+  font-weight: bold;
+}
+
+.input-group input,
+.input-group select,
+textarea {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 100%;
+}
+
+textarea {
+  height: 100px;
+  resize: none;
+}
+
+.education-entry,
+.skill-entry {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.education-entry input {
+  flex: 1;
+}
+
+.add-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.add-button:hover {
+  background-color: #45a049;
+}
+
+.ai-generate-button {
+  background-color: #008CBA;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  width: 100%;
+}
+
+.ai-generate-button:hover {
+  background-color: #007bb5;
+}
+
+/* New Create Resume Button */
+.create-resume-button {
+  background-color: #FF9800;
+  color: white;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 5px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.create-resume-button:hover {
+  background-color: #e68900;
+}

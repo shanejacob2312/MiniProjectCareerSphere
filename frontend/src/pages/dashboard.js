@@ -1,54 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import "../styles/dashboard.css"; // Import the CSS file
+import "../styles/dashboard.css";
+import createResumeIcon from "../assets/createicon.png";
+import uploadResumeIcon from "../assets/uploadicon.png";
 
 const Dashboard = () => {
-    const navigate = useNavigate();
-    const [resumes, setResumes] = useState([]);
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        const fetchResumes = async () => {
-            try {
-                const response = await axios.get("http://localhost:5000/api/resume/list");
-                setResumes(response.data);
-            } catch (err) {
-                console.error("Error fetching resumes", err);
-            }
-        };
-
-        fetchResumes();
-    }, []);
-
-    return (
-        <div className="dashboard-container">
-            <h2>Dashboard</h2>
-            
-            {/* Buttons for Resume Actions */}
-            <div className="dashboard-buttons">
-                <button onClick={() => navigate('/createresume')}>Create New Resume</button>
-                <button onClick={() => navigate('/uploadresume')}>Upload Resume</button>
-            </div>
-
-            {/* Uploaded Resumes Section */}
-            <div className="resumes-container">
-                <h3>Your Uploaded Resumes</h3>
-                {resumes.length > 0 ? (
-                    <ul>
-                        {resumes.map((resume, index) => (
-                            <li key={index}>
-                                <a href={`http://localhost:5000/uploads/${resume}`} target="_blank" rel="noopener noreferrer">
-                                    View {resume}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="no-resumes">No resumes uploaded yet.</p>
-                )}
-            </div>
+  return (
+    <div className="dashboard-container">
+      <div className="action-buttons">
+        <div className="dashboard-button" onClick={() => navigate("/resumeinput")}>
+          <img src={createResumeIcon} alt="Create Resume" className="button-icon" />
+          <button className="btn">Create a Resume</button>
         </div>
-    );
+        <div className="dashboard-button" onClick={() => navigate("/uploadresume")}>
+          <img src={uploadResumeIcon} alt="Upload Resume" className="button-icon" />
+          <button className="btn">Upload a Resume</button>
+        </div>
+      </div>
+
+      <div className="view-resumes-section">
+        <h2>View Resumes</h2>
+        <div className="resumes-grid">
+          {/* Resumes will be displayed here in grid format */}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Dashboard;

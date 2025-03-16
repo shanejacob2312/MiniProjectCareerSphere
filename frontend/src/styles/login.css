@@ -33,19 +33,14 @@
     position: absolute;
     bottom: 50%;
     left: 20%;
-    color: white;
+    color: rgb(0, 0, 0);
     font-size: 2rem;
     font-weight: bold;
     max-width: 80%;
-  }
+}
 
 .overlay-text h1 {
     font-size: 2.5rem;
-    font-weight: bold;
-}
-
-.overlay-text h2 {
-    font-size: 1.8rem;
     font-weight: bold;
 }
 
@@ -75,6 +70,7 @@
 /* Input Fields */
 .login-box input {
     width: 100%;
+    color: #000000;
     padding: 12px;
     margin: 10px 0;
     border: none;
@@ -97,6 +93,22 @@
 }
 
 .login-box button:hover {
+    background: #f0f0f0;
+}
+
+/* Forgot Password Button */
+.forgot-password-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: white;
+    color: white;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+}
+
+.forgot-password-btn:hover {
     background: #f0f0f0;
 }
 

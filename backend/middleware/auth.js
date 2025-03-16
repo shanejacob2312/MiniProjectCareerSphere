@@ -1,16 +1,24 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
-const authMiddleware = (req, res, next) => {
-    const token = req.header('Authorization');
-    if (!token) return res.status(401).json({ msg: 'No token, authorization denied' });
+const auth = (req, res, next) => {
+    const token = req.header("Authorization");
+
+    if (!token) {
+        return res.status(401).json({ message: "Access Denied: No token provided" });
+    }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded.user;
+        const verified = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
+        req.user = verified;
         next();
     } catch (error) {
-        res.status(401).json({ msg: 'Invalid token' });
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Session expired. Please login again." });
+        } else {
+            return res.status(400).json({ message: "Invalid token" });
+        }
     }
 };
 
-module.exports = authMiddleware;
+module.exports = auth;
