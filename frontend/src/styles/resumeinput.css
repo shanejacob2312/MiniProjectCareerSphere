@@ -1,10 +1,13 @@
 .resume-input-container {
   width: 60%;
   margin: 0 auto;
+  margin-top: 80px;
   padding: 20px;
   background: white;
   border-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  min-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
 h1, h2 {
@@ -40,7 +43,49 @@ textarea {
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
+  align-items: center;
 }
+
+.skill-entry {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.skill-entry input[type="text"] {
+  flex: 2;
+  min-width: 200px;
+}
+
+.skill-entry select {
+  flex: 1;
+  min-width: 150px;
+  background-color: white;
+}
+
+.skill-entry input[type="number"] {
+  flex: 1;
+  min-width: 100px;
+}
+
+.skill-level {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.skill-level-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.level-beginner { background-color: #28a745; }
+.level-intermediate { background-color: #17a2b8; }
+.level-advanced { background-color: #ffc107; }
+.level-expert { background-color: #dc3545; }
+.level-master { background-color: #6f42c1; }
 
 .education-entry input {
   flex: 1;
@@ -53,38 +98,94 @@ textarea {
   padding: 10px;
   cursor: pointer;
   border-radius: 5px;
+  width: 100%;
+  margin-top: 10px;
 }
 
 .add-button:hover {
   background-color: #45a049;
 }
 
-.ai-generate-button {
-  background-color: #008CBA;
-  color: white;
-  border: none;
-  padding: 10px;
-  cursor: pointer;
-  border-radius: 5px;
-  width: 100%;
-}
-
-.ai-generate-button:hover {
-  background-color: #007bb5;
-}
-
-/* New Create Resume Button */
+/* Create Resume Button */
 .create-resume-button {
   background-color: #FF9800;
   color: white;
   border: none;
-  padding: 10px;
+  padding: 15px;
   cursor: pointer;
   border-radius: 5px;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.3s ease;
 }
 
 .create-resume-button:hover {
   background-color: #e68900;
+}
+
+.experience-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.experience-entry input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.experience-description {
+  width: 100%;
+  min-height: 100px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  resize: vertical;
+  font-size: 14px;
+}
+
+.section-toggle {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.toggle-button {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.toggle-button:hover {
+  background-color: #5a6268;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .resume-input-container {
+    width: 90%;
+  }
+
+  .skill-entry {
+    flex-direction: column;
+  }
+
+  .skill-entry input[type="text"],
+  .skill-entry select,
+  .skill-entry input[type="number"] {
+    width: 100%;
+    min-width: unset;
+  }
 }

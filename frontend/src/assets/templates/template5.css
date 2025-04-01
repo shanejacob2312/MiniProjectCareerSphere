@@ -1,0 +1,186 @@
+.template5 {
+  width: 210mm;
+  min-height: 297mm;
+  margin: auto;
+  padding: 40px;
+  background: #ffffff;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  color: #2c3e50;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 3px solid #3498db;
+}
+
+.name {
+  font-size: 36px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+.job-title {
+  font-size: 18px;
+  color: #3498db;
+  margin: 10px 0 20px;
+  font-weight: 500;
+}
+
+.contact-info {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  flex-wrap: wrap;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #34495e;
+}
+
+.contact-item i {
+  color: #3498db;
+  font-size: 16px;
+}
+
+.section {
+  margin-bottom: 35px;
+}
+
+.section-title {
+  font-size: 22px;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: #ecf0f1;
+}
+
+.summary {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #34495e;
+  text-align: justify;
+}
+
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.skill-item {
+  background: #f8f9fa;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #2c3e50;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.skill-item:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+}
+
+.experience-item, .education-item {
+  margin-bottom: 25px;
+  padding-left: 20px;
+  border-left: 2px solid #ecf0f1;
+  position: relative;
+}
+
+.experience-item:last-child, .education-item:last-child {
+  margin-bottom: 0;
+}
+
+.experience-item::before, .education-item::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3498db;
+  border: 2px solid #fff;
+}
+
+.role-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.company-name {
+  font-size: 16px;
+  color: #3498db;
+  margin: 5px 0;
+}
+
+.duration {
+  font-size: 14px;
+  color: #7f8c8d;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #34495e;
+  margin: 0;
+}
+
+.degree {
+  font-size: 17px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.institution {
+  font-size: 15px;
+  color: #3498db;
+  margin: 5px 0;
+}
+
+.graduation-year {
+  font-size: 14px;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+.no-content {
+  color: #95a5a6;
+  font-style: italic;
+  font-size: 14px;
+}
+
+@media print {
+  .template5 {
+    box-shadow: none;
+  }
+  
+  .skill-item:hover {
+    transform: none;
+  }
+} 

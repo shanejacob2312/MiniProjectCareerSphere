@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // For navigation
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../styles/login.css";
-import loginBg from "../assets/loginbg.jpg"; // Ensure correct path
+import loginBg from "../assets/loginbg.jpg";
 
 const Login = () => {
-  const navigate = useNavigate(); // React Router hook for navigation
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,36 +14,41 @@ const Login = () => {
     e.preventDefault();
     setError("");
   
-    console.log("Attempting login with:", { email, password });
-  
     try {
+      console.log("Attempting login with email:", email);
       const response = await axios.post("http://localhost:5000/api/auth/login", {
-        email: email.trim(), // Remove extra spaces
-        password: password.toString().trim(), // Ensure it's a string
+        email: email.trim(),
+        password: password.trim(),
       });
       
-  
-      console.log("Login Response:", response.data);
-  
-      if (response.status === 200 && response.data.token) {
+      console.log("Login response received:", response.data);
+      
+      if (response.data.token) {
+        console.log("Token received, storing in localStorage");
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        console.log("Navigating to dashboard");
         navigate("/dashboard");
       } else {
-        setError(response.data.message || "Invalid credentials. Please try again.");
+        console.error("No token in response");
+        setError("Invalid response from server");
       }
     } catch (err) {
-      console.error("Login Error:", err);
-  
+      console.error("Login Error Details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      
       if (err.response) {
-        console.log("Error Response Data:", err.response.data); // ✅ Log error details
         setError(err.response.data.message || "Login failed. Check your credentials.");
+      } else if (err.request) {
+        setError("No response from server. Please check if the server is running.");
       } else {
-        setError("Server is unreachable. Try again later.");
+        setError("Error setting up the request. Please try again.");
       }
     }
   };
-  
-  
 
   return (
     <div className="login-container">
@@ -62,6 +67,7 @@ const Login = () => {
         <div className="login-box">
           <h2>Login</h2>
           {error && <p className="error-message">{error}</p>}
+          
           <form onSubmit={handleLogin}>
             <input
               type="email"

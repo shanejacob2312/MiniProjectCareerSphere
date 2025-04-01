@@ -11,6 +11,19 @@ const Template1 = ({ data }) => {
       <p><strong>Phone:</strong> {data.phone}</p>
       <p><strong>Email:</strong> {data.email}</p>
 
+      <h2>Experience</h2>
+      {data.experience && data.experience.length > 0 ? (
+        data.experience.map((exp, index) => (
+          <div key={index} className="experience-item">
+            <h3>{exp.title} at {exp.company}</h3>
+            <p className="duration">{exp.duration}</p>
+            <p className="description">{exp.description}</p>
+          </div>
+        ))
+      ) : (
+        <p>No experience listed</p>
+      )}
+
       <h2>Education</h2>
       {data.education.map((edu, index) => (
         <p key={index}>
@@ -21,7 +34,10 @@ const Template1 = ({ data }) => {
       <h2>Skills</h2>
       <ul>
         {data.skills.map((skill, index) => (
-          <li key={index}>{skill}</li>
+          <li key={index}>
+            {skill.name} - {skill.level}
+            {skill.yearsOfExperience > 0 && ` (${skill.yearsOfExperience} years)`}
+          </li>
         ))}
       </ul>
 

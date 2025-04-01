@@ -4,6 +4,7 @@ import "../styles/resumeinput.css";
 
 const ResumeInput = () => {
   const navigate = useNavigate(); // Hook for navigation
+  const [showExperience, setShowExperience] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -12,8 +13,9 @@ const ResumeInput = () => {
     gender: "",
     phone: "",
     email: "",
-    education: [{ degree: "", institution: "", year: "" }],
-    skills: [""],
+    education: [{ degree: "", institution: "", year: "", gpa: "", honors: "" }],
+    experience: [],
+    skills: [{ name: "", level: "Beginner", yearsOfExperience: 0 }],
     summary: "",
     jobType: "", // New field for job type
   });
@@ -32,31 +34,109 @@ const ResumeInput = () => {
   const addEducation = () => {
     setFormData({
       ...formData,
-      education: [...formData.education, { degree: "", institution: "", year: "" }],
+      education: [...formData.education, { degree: "", institution: "", year: "", gpa: "", honors: "" }],
+    });
+  };
+
+  const addExperience = () => {
+    setFormData({
+      ...formData,
+      experience: [...formData.experience, { title: "", company: "", duration: "", description: "" }],
     });
   };
 
   const addSkill = () => {
     setFormData({
       ...formData,
-      skills: [...formData.skills, ""],
+      skills: [...formData.skills, { name: "", level: "Beginner", yearsOfExperience: 0 }],
     });
   };
 
-  const handleAIgenerate = () => {
-    // Placeholder for AI-generated summary logic
-    const generatedSummary = `A highly motivated individual with expertise in ${formData.skills.join(
-      ", "
-    )} and a background in ${formData.education
-      .map((edu) => edu.degree)
-      .join(", ")} from ${formData.education
-      .map((edu) => edu.institution)
-      .join(", ")}.`;
-    setFormData({ ...formData, summary: generatedSummary });
+  const handleSkillChange = (index, field, value) => {
+    const updatedSkills = [...formData.skills];
+    updatedSkills[index] = {
+      ...updatedSkills[index],
+      [field]: value
+    };
+    setFormData({ ...formData, skills: updatedSkills });
   };
 
-  const handleCreateResume = () => {
-    navigate("/resumebuilder", { state: { resumeData: formData } });
+  const handleCreateResume = async () => {
+    // Validate required fields
+    if (!formData.name || !formData.jobType || !formData.skills.length) {
+      alert("Please fill in all required fields (Name, Job Type, and at least one skill)");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      // Format the resume data with all form fields
+      const resumeData = {
+        name: formData.name,
+        age: formData.age || null,
+        location: formData.location || "",
+        gender: formData.gender || "",
+        phone: formData.phone || "",
+        email: formData.email || "",
+        jobType: formData.jobType, // Changed from job_type to jobType to match schema
+        skills: formData.skills.filter(skill => skill.name.trim() !== ""), // Remove empty skills
+        education: formData.education
+          .filter(edu => edu.degree && edu.institution) // Remove empty education entries
+          .map(edu => ({
+            degree: edu.degree,
+            institution: edu.institution,
+            year: edu.year || "",
+            gpa: edu.gpa || "",
+            honors: edu.honors || ""
+          })),
+        experience: formData.experience
+          .filter(exp => exp.title && exp.company)
+          .map(exp => ({
+            title: exp.title,
+            company: exp.company,
+            duration: exp.duration || "",
+            description: exp.description || ""
+          })),
+        summary: formData.summary || "",
+        type: 'created'
+      };
+
+      console.log('Sending resume data:', resumeData); // Debug log
+
+      // Save the resume
+      const response = await fetch('http://localhost:5000/api/resumes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(resumeData)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to save resume');
+      }
+
+      // Navigate to resume builder with the saved resume data
+      navigate("/resumebuilder", { 
+        state: { 
+          resumeData: {
+            ...resumeData,
+            _id: responseData._id
+          }
+        } 
+      });
+    } catch (err) {
+      console.error('Error saving resume:', err);
+      alert(err.message || 'Failed to save resume. Please try again.');
+    }
   };
 
   return (
@@ -135,24 +215,111 @@ const ResumeInput = () => {
               onChange={(e) => handleChange(e, index, "year")}
               required
             />
+            <input
+              type="text"
+              name="education"
+              placeholder="GPA (Optional)"
+              value={edu.gpa}
+              onChange={(e) => handleChange(e, index, "gpa")}
+            />
+            <input
+              type="text"
+              name="education"
+              placeholder="Honors/Awards (Optional)"
+              value={edu.honors}
+              onChange={(e) => handleChange(e, index, "honors")}
+            />
           </div>
         ))}
         <button type="button" onClick={addEducation} className="add-button">+ Add Education</button>
+
+        <div className="section-toggle">
+          <button 
+            type="button" 
+            onClick={() => {
+              setShowExperience(!showExperience);
+              if (!showExperience && formData.experience.length === 0) {
+                setFormData({
+                  ...formData,
+                  experience: [{ title: "", company: "", duration: "", description: "" }]
+                });
+              }
+            }} 
+            className={`toggle-button ${showExperience ? 'active' : ''}`}
+          >
+            {showExperience ? 'Hide Experience Section' : 'Add Experience Section'}
+          </button>
+        </div>
+
+        {showExperience && (
+          <>
+            <h2>Experience</h2>
+            {formData.experience.map((exp, index) => (
+              <div key={index} className="experience-entry">
+                <input
+                  type="text"
+                  name="experience"
+                  placeholder="Job Title"
+                  value={exp.title}
+                  onChange={(e) => handleChange(e, index, "title")}
+                  required={showExperience}
+                />
+                <input
+                  type="text"
+                  name="experience"
+                  placeholder="Company"
+                  value={exp.company}
+                  onChange={(e) => handleChange(e, index, "company")}
+                  required={showExperience}
+                />
+                <input
+                  type="text"
+                  name="experience"
+                  placeholder="Duration (e.g., 2020-2022)"
+                  value={exp.duration}
+                  onChange={(e) => handleChange(e, index, "duration")}
+                />
+                <textarea
+                  name="experience"
+                  placeholder="Job Description"
+                  value={exp.description}
+                  onChange={(e) => handleChange(e, index, "description")}
+                  className="experience-description"
+                />
+              </div>
+            ))}
+            <button type="button" onClick={addExperience} className="add-button">+ Add Experience</button>
+          </>
+        )}
 
         <h2>Skills</h2>
         {formData.skills.map((skill, index) => (
           <div key={index} className="skill-entry">
             <input
               type="text"
-              name="skills"
               placeholder="Skill"
-              value={skill}
-              onChange={(e) => {
-                const updatedSkills = [...formData.skills];
-                updatedSkills[index] = e.target.value;
-                setFormData({ ...formData, skills: updatedSkills });
-              }}
+              value={skill.name}
+              onChange={(e) => handleSkillChange(index, 'name', e.target.value)}
               required
+            />
+            <select
+              value={skill.level}
+              onChange={(e) => handleSkillChange(index, 'level', e.target.value)}
+              required
+            >
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+              <option value="Expert">Expert</option>
+              <option value="Master">Master</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Years of Experience"
+              value={skill.yearsOfExperience}
+              onChange={(e) => handleSkillChange(index, 'yearsOfExperience', parseInt(e.target.value) || 0)}
+              min="0"
+              max="50"
             />
           </div>
         ))}
@@ -166,11 +333,7 @@ const ResumeInput = () => {
           onChange={handleChange}
           required
         />
-        <button type="button" onClick={handleAIgenerate} className="ai-generate-button">
-          Generate with AI
-        </button>
 
-        {/* New Create Resume Button */}
         <button type="button" onClick={handleCreateResume} className="create-resume-button">
           Create Resume
         </button>

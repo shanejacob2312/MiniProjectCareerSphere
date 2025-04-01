@@ -47,3 +47,42 @@
     margin: 5px 0;
   }
   
+  .experience {
+    margin: 2rem 0;
+  }
+  
+  .experience-item {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e1e1e1;
+  }
+  
+  .experience-item:last-child {
+    border-bottom: none;
+  }
+  
+  .experience-header {
+    margin-bottom: 1rem;
+  }
+  
+  .experience-header h3 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+  }
+  
+  .experience-header .company {
+    font-weight: 600;
+    color: #3498db;
+    margin-right: 1rem;
+  }
+  
+  .experience-header .duration {
+    color: #7f8c8d;
+    font-style: italic;
+  }
+  
+  .experience-item .description {
+    line-height: 1.6;
+    color: #34495e;
+  }
+  
