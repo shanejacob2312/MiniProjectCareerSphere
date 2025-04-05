@@ -22,11 +22,22 @@ const ResumeInput = () => {
 
   const handleChange = (e, index = null, field = null) => {
     const { name, value } = e.target;
+    
     if (index !== null && field) {
-      const updatedArray = [...formData[name]];
-      updatedArray[index][field] = value;
-      setFormData({ ...formData, [name]: updatedArray });
+      // Handle array fields (education, experience)
+      const arrayField = name === 'education' ? 'education' : 
+                        name === 'experience' ? 'experience' : null;
+                        
+      if (arrayField) {
+        const updatedArray = [...formData[arrayField]];
+        updatedArray[index] = {
+          ...updatedArray[index],
+          [field]: value
+        };
+        setFormData({ ...formData, [arrayField]: updatedArray });
+      }
     } else {
+      // Handle regular fields
       setFormData({ ...formData, [name]: value });
     }
   };
@@ -188,6 +199,41 @@ const ResumeInput = () => {
           <input type="email" name="email" value={formData.email} onChange={handleChange} required />
         </div>
 
+        <h2>Skills</h2>
+        {formData.skills.map((skill, index) => (
+          <div key={index} className="skill-entry">
+            <input
+              type="text"
+              placeholder="Skill name"
+              value={skill.name}
+              onChange={(e) => handleSkillChange(index, "name", e.target.value)}
+              required
+            />
+            <select
+              value={skill.level}
+              onChange={(e) => handleSkillChange(index, "level", e.target.value)}
+              required
+            >
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+              <option value="Expert">Expert</option>
+              <option value="Master">Master</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Years of experience"
+              value={skill.yearsOfExperience}
+              onChange={(e) => handleSkillChange(index, "yearsOfExperience", parseInt(e.target.value) || 0)}
+              min="0"
+              required
+            />
+          </div>
+        ))}
+        <button type="button" onClick={addSkill} className="add-button">
+          Add Skill
+        </button>
+
         <h2>Education</h2>
         {formData.education.map((edu, index) => (
           <div key={index} className="education-entry">
@@ -210,28 +256,29 @@ const ResumeInput = () => {
             <input
               type="text"
               name="education"
-              placeholder="Year"
+              placeholder="Year (e.g., 2022-2026)"
               value={edu.year}
               onChange={(e) => handleChange(e, index, "year")}
-              required
             />
             <input
               type="text"
               name="education"
-              placeholder="GPA (Optional)"
+              placeholder="GPA"
               value={edu.gpa}
               onChange={(e) => handleChange(e, index, "gpa")}
             />
             <input
               type="text"
               name="education"
-              placeholder="Honors/Awards (Optional)"
+              placeholder="Honors"
               value={edu.honors}
               onChange={(e) => handleChange(e, index, "honors")}
             />
           </div>
         ))}
-        <button type="button" onClick={addEducation} className="add-button">+ Add Education</button>
+        <button type="button" onClick={addEducation} className="add-button">
+          Add Education
+        </button>
 
         <div className="section-toggle">
           <button 
@@ -291,39 +338,6 @@ const ResumeInput = () => {
             <button type="button" onClick={addExperience} className="add-button">+ Add Experience</button>
           </>
         )}
-
-        <h2>Skills</h2>
-        {formData.skills.map((skill, index) => (
-          <div key={index} className="skill-entry">
-            <input
-              type="text"
-              placeholder="Skill"
-              value={skill.name}
-              onChange={(e) => handleSkillChange(index, 'name', e.target.value)}
-              required
-            />
-            <select
-              value={skill.level}
-              onChange={(e) => handleSkillChange(index, 'level', e.target.value)}
-              required
-            >
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-              <option value="Expert">Expert</option>
-              <option value="Master">Master</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Years of Experience"
-              value={skill.yearsOfExperience}
-              onChange={(e) => handleSkillChange(index, 'yearsOfExperience', parseInt(e.target.value) || 0)}
-              min="0"
-              max="50"
-            />
-          </div>
-        ))}
-        <button type="button" onClick={addSkill} className="add-button">+ Add Skill</button>
 
         <h2>Summary</h2>
         <textarea

@@ -143,6 +143,32 @@ ANALYSIS REQUIREMENTS:
                     # Parse the JSON response
                     recommendations = json.loads(generated_text)
                     
+                    # Fetch Udemy courses for each recommended course
+                    if "course_recommendations" in recommendations:
+                        for course in recommendations["course_recommendations"]:
+                            # Search for matching Udemy courses using both title and skills
+                            search_terms = [
+                                course['title'],
+                                *course.get('skills_covered', []),
+                                *course.get('topics', [])
+                            ]
+                            
+                            udemy_courses = []
+                            for term in search_terms:
+                                courses = fetch_udemy_courses(term, max_results=3)
+                                udemy_courses.extend(courses)
+                            
+                            # Remove duplicates and limit to top 3 matches
+                            seen_titles = set()
+                            unique_courses = []
+                            for course in udemy_courses:
+                                title = course['title'].lower()
+                                if title not in seen_titles:
+                                    seen_titles.add(title)
+                                    unique_courses.append(course)
+                            
+                            course['udemy_courses'] = unique_courses[:3]
+                    
                     # Log detailed analysis of recommendations
                     log_recommendation_analysis(recommendations, education, experience, skills)
                     
@@ -534,6 +560,81 @@ def get_fallback_recommendations(job_type, skills):
     except Exception as e:
         logger.error(f"Error in fallback recommendations: {str(e)}")
         return None
+
+def fetch_udemy_courses(query, max_results=5):
+    """Fetch course data from Udemy API"""
+    try:
+        headers = {
+            'Authorization': f'Basic {UDEMY_API_KEY}:{UDEMY_CLIENT_ID}',
+            'Content-Type': 'application/json'
+        }
+        
+        params = {
+            'search': query,
+            'page_size': max_results,
+            'ordering': 'highest-rated',
+            'language': 'en',
+            'price': 'price-paid,price-free'
+        }
+        
+        response = requests.get(
+            f'{UDEMY_BASE_URL}/courses/',
+            headers=headers,
+            params=params
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            courses = []
+            
+            for course in data.get('results', []):
+                # Extract course URL
+                course_url = course.get('url', '')
+                if not course_url:
+                    continue
+                    
+                # Clean up the URL
+                course_url = course_url.strip('/')
+                if not course_url.startswith('http'):
+                    course_url = f"https://www.udemy.com/course/{course_url}"
+                
+                # Format duration
+                duration = course.get('content_info', '')
+                if duration:
+                    duration = duration.replace(' hours', 'h').replace(' hour', 'h')
+                
+                courses.append({
+                    'title': course.get('title'),
+                    'description': course.get('description'),
+                    'udemy_link': course_url,
+                    'level': course.get('instructional_level', 'All Levels'),
+                    'duration': duration,
+                    'rating': round(float(course.get('rating', 0)), 1),
+                    'price': course.get('price', 'N/A'),
+                    'instructor': course.get('visible_instructors', [{}])[0].get('display_name', 'N/A'),
+                    'last_updated': course.get('last_update_date', 'N/A'),
+                    'language': course.get('locale', {}).get('title', 'English'),
+                    'students_count': course.get('num_subscribers', 0),
+                    'reviews_count': course.get('num_reviews', 0)
+                })
+            
+            # Remove duplicates based on title
+            seen_titles = set()
+            unique_courses = []
+            for course in courses:
+                title = course['title'].lower()
+                if title not in seen_titles:
+                    seen_titles.add(title)
+                    unique_courses.append(course)
+            
+            return unique_courses
+        else:
+            logger.error(f"Udemy API error: {response.status_code}")
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error fetching Udemy courses: {str(e)}")
+        return []
 
 @app.route('/')
 def index():

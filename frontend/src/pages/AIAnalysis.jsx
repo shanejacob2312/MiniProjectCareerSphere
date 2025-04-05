@@ -17,7 +17,8 @@ import {
   Button,
   Tooltip,
   IconButton,
-  TextField
+  TextField,
+  Link
 } from '@mui/material';
 import {
   Assessment as AssessmentIcon,
@@ -29,7 +30,9 @@ import {
   Refresh as RefreshIcon,
   Share as ShareIcon,
   Download as DownloadIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  BusinessCenter as BusinessCenterIcon,
+  OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import { styled, useTheme } from '@mui/material/styles';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
@@ -191,13 +194,64 @@ const AIAnalysis = () => {
     pdf: false
   });
   const [error, setError] = useState(null);
-  const [analysis, setAnalysis] = useState(null);
+  const [analysis, setAnalysis] = useState({
+    skills_analysis: {
+      matched_skills: [],
+      missing_skills: [],
+      skills_match_score: 0
+    },
+    text_quality: {
+      score: 0,
+      readability: 'Good',
+      clarity: 'Good'
+    },
+    education_score: 0,
+    experience_score: 0,
+    overall_score: 0,
+    recommendations: {
+      courses: [],
+      certifications: [],
+      jobs: []
+    }
+  });
   const [serverStatus, setServerStatus] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 3;
   const [progress, setProgress] = useState(0);
   const progressInterval = useRef(null);
   const theme = useTheme();
+  const [radarData, setRadarData] = useState([
+    {
+      subject: 'Text Quality',
+      A: 0,
+      fullMark: 100,
+      description: 'Measures the clarity and professionalism of your writing'
+    },
+    {
+      subject: 'Skills Match',
+      A: 0,
+      fullMark: 100,
+      description: 'How well your skills match industry standards'
+    },
+    {
+      subject: 'Education',
+      A: 0,
+      fullMark: 100,
+      description: 'Assessment of your educational background'
+    },
+    {
+      subject: 'Experience',
+      A: 0,
+      fullMark: 100,
+      description: 'Evaluation of your work experience'
+    },
+    {
+      subject: 'Overall',
+      A: 0,
+      fullMark: 100,
+      description: 'Combined score of all factors'
+    }
+  ]);
 
   // Clear intervals on unmount
   useEffect(() => {
@@ -209,40 +263,36 @@ const AIAnalysis = () => {
   }, []);
 
   const validateResumeData = useCallback((data) => {
-    console.log('Validating resume data:', data);
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid resume data format');
     }
 
-    // Ensure we have text content from either text or summary field
-    const textContent = data.text || data.summary || '';
-    if (textContent.trim() === '') {
-      throw new Error('Resume text is required');
+    // Process skills array properly
+    let processedSkills = [];
+    if (Array.isArray(data.skills)) {
+      processedSkills = data.skills
+        .filter(Boolean)
+        .map(skill => {
+          if (typeof skill === 'string') {
+            return { name: skill, level: 'intermediate' };
+          }
+          return {
+            name: skill.name || '',
+            level: skill.level || 'intermediate',
+            years: skill.years || null
+          };
+        })
+        .filter(skill => skill.name);
     }
 
-    // Ensure education array is properly structured
-    const education = Array.isArray(data.education) ? data.education.filter(Boolean) : [];
-    console.log('Processed education data:', education);
-
-    // Ensure experience array is properly structured
-    const experience = Array.isArray(data.experience) ? data.experience.filter(Boolean) : [];
-    console.log('Processed experience data:', experience);
-
-    // Ensure skills array is properly structured
-    const skills = Array.isArray(data.skills) ? 
-      data.skills
-        .filter(Boolean)
-        .map(skill => typeof skill === 'object' ? skill : { name: skill })
-        .filter(skill => skill.name && typeof skill.name === 'string') : [];
-    console.log('Processed skills data:', skills);
-
     return {
-      text: textContent.trim(),
+      text: data.text || '',
       job_type: data.job_type || 'Software Developer',
-      skills: skills,
-      education: education,
-      experience: experience,
-      summary: data.summary || textContent.trim()
+      skills: processedSkills,
+      education: Array.isArray(data.education) ? data.education.filter(Boolean) : [],
+      experience: Array.isArray(data.experience) ? data.experience.filter(Boolean) : [],
+      summary: data.summary || data.text || '',
+      industry_sector: data.industry_sector || 'Technology'
     };
   }, []);
 
@@ -328,14 +378,98 @@ const AIAnalysis = () => {
     }
 }, [analysis]);
 
+  const handleShare = useCallback(() => {
+    if (navigator.share) {
+      // Use Web Share API if available
+      navigator.share({
+        title: 'Resume Analysis Results',
+        text: `Overall Score: ${analysis?.overall_score}%\nSkills Match: ${analysis?.skills_analysis?.industry_comparison?.overall_comparison || 0}%`,
+        url: window.location.href
+      }).catch(err => console.log('Error sharing:', err));
+    } else {
+      // Fallback to copying to clipboard
+      const shareText = `Resume Analysis Results\n` +
+        `Overall Score: ${analysis?.overall_score}%\n` +
+        `Skills Match: ${analysis?.skills_analysis?.industry_comparison?.overall_comparison || 0}%`;
+      
+      navigator.clipboard.writeText(shareText)
+        .then(() => alert('Analysis results copied to clipboard!'))
+        .catch(err => console.error('Failed to copy:', err));
+    }
+  }, [analysis]);
+
+  const processSkillsAnalysis = (skillsAnalysis) => {
+    if (!skillsAnalysis) return { matched_skills: [], missing_skills: [] };
+
+    // Define relevant technical skills and common words to exclude
+    const commonWords = ['using', 'based', 'years', 'skills', 'expert', 'successfully', 'implemented', 'developed', 'leading'];
+    const technicalSkills = ['python', 'react', 'node.js', 'aws', 'docker', 'kubernetes', 
+      'git', 'agile', 'ci/cd', 'microservices', 'testing', 'javascript', 'html', 'css', 
+      'rest', 'api', 'sql', 'database', 'cloud', 'development', 'software', 'engineering',
+      'java', 'spring', 'angular', 'vue', 'typescript', 'mongodb', 'postgresql', 'redis',
+      'elasticsearch', 'kafka', 'rabbitmq', 'graphql', 'react native', 'flutter', 'swift',
+      'kotlin', 'android', 'ios', 'machine learning', 'ai', 'data science', 'devops'];
+
+    // Process matched skills
+    const matched = Array.isArray(skillsAnalysis.matched_skills) 
+      ? skillsAnalysis.matched_skills
+        .filter(skill => {
+          const skillName = typeof skill === 'string' ? skill.toLowerCase() : skill.name?.toLowerCase();
+          return skillName && 
+                 !commonWords.includes(skillName) &&
+                 (technicalSkills.includes(skillName) || 
+                  technicalSkills.some(tech => skillName.includes(tech)));
+        })
+        .map(skill => {
+          if (typeof skill === 'string') {
+            return {
+              name: skill,
+              level: 'intermediate',
+              years: null
+            };
+          }
+          return {
+            name: skill.name,
+            level: skill.level || skill.proficiency || 'intermediate',
+            years: skill.years || null
+          };
+        })
+      : [];
+
+    // Process missing skills
+    const missing = Array.isArray(skillsAnalysis.missing_skills)
+      ? skillsAnalysis.missing_skills
+        .filter(skill => {
+          const skillName = typeof skill === 'string' ? skill.toLowerCase() : skill.name?.toLowerCase();
+          return skillName && 
+                 !commonWords.includes(skillName) &&
+                 (technicalSkills.includes(skillName) || 
+                  technicalSkills.some(tech => skillName.includes(tech)));
+        })
+        .map(skill => ({
+          name: typeof skill === 'string' ? skill : skill.name,
+          required_level: typeof skill === 'object' ? skill.required_level || 'high' : 'high',
+          market_demand: typeof skill === 'object' ? skill.market_demand || 'high' : 'high'
+        }))
+      : [];
+
+    console.log('Processed matched skills:', matched);
+    console.log('Processed missing skills:', missing);
+
+    return {
+      matched_skills: matched,
+      missing_skills: missing
+    };
+  };
+
   const analyzeResume = useCallback(async () => {
     try {
       const resumeData = location.state?.resumeData;
-      console.log('Raw resume data received:', resumeData);
-      
       if (!resumeData) {
         throw new Error('No resume data available for analysis');
       }
+
+      console.log('Initial resume data:', resumeData);
 
       const validatedData = validateResumeData(resumeData);
       console.log('Validated resume data:', validatedData);
@@ -346,10 +480,58 @@ const AIAnalysis = () => {
         return;
       }
 
-      // Start progress animation
+      setProgress(0);
       progressInterval.current = setInterval(() => {
         setProgress(prev => prev < 90 ? prev + 10 : prev);
       }, 500);
+
+      const requestBody = {
+        ...validatedData,
+        request_recommendations: true,
+        request_scores: true,
+        generate_recommendations: true,
+        analyze_skills: true,
+        compare_to_industry: true,
+        current_skills: Array.isArray(validatedData.skills) ? validatedData.skills.map(skill => {
+          if (typeof skill !== 'string') return null;
+          // Parse skill string like "React - Master (5 years)"
+          const matches = skill.match(/(.+?)\s*-\s*(\w+)\s*\((\d+)\s*years?\)/);
+          if (matches) {
+            const [, name, level, years] = matches;
+            return {
+              name: name.trim(),
+              level: level.trim(),
+              years: parseInt(years)
+            };
+          }
+          // Fallback if skill string doesn't match expected format
+          const parts = skill.split('-').map(s => s.trim());
+          return {
+            name: parts[0] || '',
+            level: parts[1] || 'Intermediate',
+            years: 0
+          };
+        }).filter(Boolean) : [],
+        job_preferences: {
+          job_type: validatedData.job_type || 'software developer',
+          industry_sector: validatedData.industry_sector || 'Technology',
+          experience_level: validatedData.experience?.length > 0 
+            ? (validatedData.experience[0].title?.toLowerCase().includes('senior') ? 'Senior' : 'Mid-Level')
+            : 'Entry-Level',
+          education_level: validatedData.education?.length > 0 
+            ? validatedData.education[0].degree?.toLowerCase().includes('master') 
+              ? 'Masters' 
+              : validatedData.education[0].degree?.toLowerCase().includes('bachelor')
+                ? 'Bachelors'
+                : 'Other'
+            : 'Other'
+        }
+      };
+
+      console.log('Sending request with skills and preferences:', {
+        skills: requestBody.current_skills,
+        preferences: requestBody.job_preferences
+      });
 
       const response = await fetch('http://localhost:5000/api/resumeanalysis/analyze', {
         method: 'POST',
@@ -357,300 +539,306 @@ const AIAnalysis = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(validatedData),
+        body: JSON.stringify(requestBody),
       });
 
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
-      setProgress(100);
-
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Backend error response:', errorData);
-        throw new Error(errorData.error || 'Analysis request failed');
+        const errorText = await response.text();
+        console.error('Server response error:', errorText);
+        throw new Error(`Failed to analyze resume: ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Response from backend:', data);
+      console.log('Raw response data:', data);
 
-      // Validate and sanitize the response data
-      const analysisData = {
-        ...data,
-        overall_score: Math.max(0, Math.min(100, data.overall_score || 0)),
-        text_quality: {
-          readability_score: Math.max(0, Math.min(100, data.text_quality?.readability_score || 0)),
-          sentence_count: Math.max(0, data.text_quality?.sentence_count || 0),
-          word_count: Math.max(0, data.text_quality?.word_count || 0),
-          avg_word_length: String(data.text_quality?.avg_word_length || '0')
+      // Process recommendations based on user's skills
+      const courseRecommendations = Array.isArray(data.course_recommendations) ? 
+        data.course_recommendations
+          .filter((course, index, self) => 
+            // Remove duplicates based on title
+            index === self.findIndex((c) => c.name === course.name)
+          )
+          .map(course => ({
+            name: course.name || course.title || '',
+            description: course.description || '',
+            provider: course.provider || '',
+            level: course.level || 'Intermediate',
+            match_score: course.match_score || course.match_percentage || 0,
+            skills_covered: Array.isArray(course.skills_covered) ? course.skills_covered : [],
+            prerequisites: Array.isArray(course.prerequisites) ? course.prerequisites : [],
+            skill_improvements: Array.isArray(course.skill_improvements) ? course.skill_improvements : [],
+            // Add Udemy course data if available
+            udemy_courses: Array.isArray(course.udemy_courses) ? course.udemy_courses : [],
+            // Add direct course link
+            course_link: course.course_link || course.link || ''
+          })) : [];
+
+      // Ensure minimum 3 courses
+      if (courseRecommendations.length < 3) {
+        // Add default courses if needed
+        const defaultCourses = [
+          {
+            name: "Introduction to Programming",
+            description: "Learn the fundamentals of programming and software development",
+            provider: "Coursera",
+            level: "Beginner",
+            match_score: 85,
+            skills_covered: ["Programming Basics", "Problem Solving", "Logic"],
+            course_link: "https://www.coursera.org/learn/intro-programming"
+          },
+          {
+            name: "Web Development Fundamentals",
+            description: "Master the basics of web development and front-end technologies",
+            provider: "edX",
+            level: "Intermediate",
+            match_score: 80,
+            skills_covered: ["HTML", "CSS", "JavaScript"],
+            course_link: "https://www.edx.org/course/web-development-fundamentals"
+          },
+          {
+            name: "Data Structures and Algorithms",
+            description: "Learn essential computer science concepts and problem-solving techniques",
+            provider: "Udacity",
+            level: "Advanced",
+            match_score: 75,
+            skills_covered: ["Data Structures", "Algorithms", "Problem Solving"],
+            course_link: "https://www.udacity.com/course/data-structures-and-algorithms"
+          }
+        ];
+
+        // Add default courses only if they don't already exist
+        defaultCourses.forEach(defaultCourse => {
+          if (!courseRecommendations.some(course => course.name === defaultCourse.name)) {
+            courseRecommendations.push(defaultCourse);
+          }
+        });
+      }
+
+      const certificationRecommendations = Array.isArray(data.certification_recommendations) ? 
+        data.certification_recommendations.map(cert => ({
+          name: cert.name || cert.title || '',
+          description: cert.description || '',
+          provider: cert.provider || '',
+          level: cert.level || 'Professional',
+          match_score: cert.match_score || cert.match_percentage || 0,
+          skills_validated: Array.isArray(cert.skills_validated) ? cert.skills_validated : [],
+          required_skills: Array.isArray(cert.required_skills) ? cert.required_skills : [],
+          matched_skills: Array.isArray(cert.matched_skills) ? cert.matched_skills : [],
+          career_impact: cert.career_impact || 'High'
+        })) : [];
+
+      const jobRecommendations = Array.isArray(data.job_recommendations) ? 
+        data.job_recommendations.map(job => ({
+          title: job.title || job.name || '',
+          description: job.description || '',
+          level: job.level || 'Mid-Level',
+          salary_range: job.salary_range || 'Competitive',
+          match_score: job.match_score || job.match_percentage || 0,
+          required_skills: Array.isArray(job.required_skills) ? job.required_skills : [],
+          matched_skills: Array.isArray(job.matched_skills) ? job.matched_skills : [],
+          missing_skills: Array.isArray(job.missing_skills) ? job.missing_skills : [],
+          growth_potential: job.growth_potential || 'High',
+          market_demand: job.market_demand || 'High'
+        })) : [];
+
+      console.log('Processed recommendations:', {
+        courses: courseRecommendations,
+        certifications: certificationRecommendations,
+        jobs: jobRecommendations
+      });
+
+      // Create new radar data with the scores
+      const newRadarData = [
+        {
+          subject: 'Text Quality',
+          A: Math.round(data.text_quality?.readability_score || 0),
+          fullMark: 100,
+          description: 'Measures the clarity and professionalism of your writing'
         },
+        {
+          subject: 'Skills Match',
+          A: Math.round(data.skill_match || 0),
+          fullMark: 100,
+          description: 'How well your skills match industry standards'
+        },
+        {
+          subject: 'Education',
+          A: Math.round(data.education_score || 0),
+          fullMark: 100,
+          description: 'Assessment of your educational background'
+        },
+        {
+          subject: 'Experience',
+          A: Math.round(data.experience_score || 0),
+          fullMark: 100,
+          description: 'Evaluation of your work experience'
+        },
+        {
+          subject: 'Overall',
+          A: Math.round(data.overall_score || 0),
+          fullMark: 100,
+          description: 'Combined score of all factors'
+        }
+      ];
+
+      console.log('New radar data:', newRadarData);
+
+      // Process the data into our expected format
+      const processedData = {
         skills_analysis: {
           matched_skills: Array.isArray(data.skills_analysis?.matched_skills) ? 
-            data.skills_analysis.matched_skills.filter(Boolean) : [],
-          missing_skills: Array.isArray(data.skills_analysis?.missing_skills) ?
-            data.skills_analysis.missing_skills.filter(Boolean) : [],
-          skill_scores: {
-            total: Math.max(0, Math.min(100, data.skills_analysis?.skill_scores?.total || 0)),
-            confidence: Math.max(0, Math.min(1, data.skills_analysis?.skill_scores?.confidence || 0))
-          }
+            data.skills_analysis.matched_skills.map(skill => ({
+              name: skill.name || skill,
+              level: skill.level || 'Intermediate',
+              years: skill.years || null
+            })) : [],
+          missing_skills: Array.isArray(data.skills_analysis?.missing_skills) ? 
+            data.skills_analysis.missing_skills.map(skill => ({
+              name: skill.name || skill,
+              required_level: skill.required_level || 'High',
+              market_demand: skill.market_demand || 'High'
+            })) : [],
+          skills_match_score: data.skill_match || 0
         },
-        education: Array.isArray(resumeData.education) ? resumeData.education.filter(Boolean) : [],
-        experience: Array.isArray(resumeData.experience) ? resumeData.experience.filter(Boolean) : [],
-        job_recommendations: Array.isArray(data.job_recommendations) ? 
-          data.job_recommendations.filter(Boolean) : [],
-        course_recommendations: Array.isArray(data.course_recommendations) ?
-          data.course_recommendations.filter(Boolean) : [],
-        certification_recommendations: Array.isArray(data.certification_recommendations) ?
-          data.certification_recommendations.filter(Boolean) : []
+        text_quality: {
+          score: data.text_quality?.readability_score || 0,
+          readability: data.text_quality?.readability || 'Good',
+          clarity: data.text_quality?.clarity || 'Good'
+        },
+        education_score: data.education_score || 0,
+        experience_score: data.experience_score || 0,
+        overall_score: data.overall_score || 0,
+        recommendations: {
+          courses: courseRecommendations,
+          certifications: certificationRecommendations,
+          jobs: jobRecommendations
+        }
       };
 
-      // Log the processed analysis data
-      console.log('Final analysis data:', analysisData);
-      setAnalysis(analysisData);
+      console.log('Processed data:', processedData);
+
+      // Update state with new data
+      setRadarData(newRadarData);
+      setAnalysis(processedData);
+      setLoading(false);
+
     } catch (err) {
       console.error('Analysis failed:', err);
       setError(err.message || 'Error analyzing resume. Please try again later.');
-      
-      if (err.message.includes('connecting to server') && retryCount < MAX_RETRIES) {
-        setTimeout(handleRetry, 2000 * (retryCount + 1));
-      }
     } finally {
       setLoading(false);
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
       }
     }
-  }, [location, navigate, retryCount, handleRetry, validateResumeData]);
+  }, [location, navigate, validateResumeData]);
 
-  // Memoize radar data preparation
-  const prepareRadarData = useCallback((analysis) => {
-    if (!analysis) return [];
-    
-    console.log('Preparing radar data with analysis:', analysis);
-    
-    // Calculate normalized scores
-    const textQualityScore = Math.max(0, Math.min(100, analysis.text_quality.readability_score || 0));
-    const skillsMatchScore = Math.min(100, ((analysis.skills_analysis.matched_skills.length || 0) * 10));
-    const educationScore = Math.max(0, Math.min(100, calculateEducationScore(analysis.education)));
-    const experienceScore = Math.max(0, Math.min(100, calculateExperienceScore(analysis.experience)));
-    
-    // Calculate overall score as weighted average
-    const weights = {
-      textQuality: 0.2,
-      skillsMatch: 0.3,
-      education: 0.25,
-      experience: 0.25
-    };
-    
-    const overallScore = Math.round(
-      textQualityScore * weights.textQuality +
-      skillsMatchScore * weights.skillsMatch +
-      educationScore * weights.education +
-      experienceScore * weights.experience
-    );
-    
-    return [
-      {
-        skill: 'Text Quality',
-        value: textQualityScore,
-      },
-      {
-        skill: 'Skills Match',
-        value: skillsMatchScore,
-      },
-      {
-        skill: 'Education',
-        value: educationScore,
-      },
-      {
-        skill: 'Experience',
-        value: experienceScore,
-      },
-      {
-        skill: 'Overall Score',
-        value: Math.max(0, Math.min(100, overallScore)),
-      },
-    ];
-  }, []);
-
-  useEffect(() => {
-    const initializeAnalysis = async () => {
-      const serverRunning = await checkServerStatus();
-      if (serverRunning) {
-        await analyzeResume();
-      }
-    };
-
-    initializeAnalysis();
-  }, [location]);
-
-  const calculateEducationScore = (education) => {
-    console.log('Raw education data:', education);
-    
-    if (!Array.isArray(education)) {
-      console.log('Education is not an array, type:', typeof education);
-      return 0;
-    }
-
-    if (education.length === 0) {
-      console.log('Education array is empty');
-      return 0;
-    }
-    
-    let totalScore = 0;
-    education.forEach((edu, index) => {
-      if (!edu) {
-        console.log(`Education entry ${index} is null or undefined`);
-        return;
-      }
-      
-      let entryScore = 0;
-      console.log(`Processing education entry ${index}:`, edu);
-
-      // Score for institution (0-40 points)
-      if (edu.institution) {
-        const institution = edu.institution.toLowerCase();
-        if (institution.includes('carnegie mellon') || 
-            institution.includes('mit') || 
-            institution.includes('stanford') ||
-            institution.includes('harvard') ||
-            institution.includes('oxford') ||
-            institution.includes('cambridge')) {
-          entryScore += 40; // Top-tier institutions
-          console.log('Top-tier institution bonus:', 40);
-        } else if (institution.includes('university') || 
-                  institution.includes('college') ||
-                  institution.includes('institute') ||
-                  institution.includes('school')) {
-          entryScore += 30; // Standard institutions
-          console.log('Standard institution points:', 30);
-        } else {
-          entryScore += 25; // Other educational institutions
-          console.log('Other institution points:', 25);
-        }
-      }
-
-      // Score for degree (0-40 points)
-      if (edu.degree) {
-        const degree = edu.degree.toLowerCase();
-        if (degree.includes('ph.d') || degree.includes('doctorate')) {
-          entryScore += 40;
-          console.log('Doctorate degree points:', 40);
-        } else if (degree.includes('master') || degree.includes('m.s.') || degree.includes('m.tech')) {
-          entryScore += 35;
-          console.log('Masters degree points:', 35);
-        } else if (degree.includes('b.s.') || 
-                  degree.includes('bachelor') || 
-                  degree.includes('b.tech') ||
-                  degree.includes('computer science') ||
-                  degree.includes('engineering')) {
-          entryScore += 30;
-          console.log('Bachelors/Engineering degree points:', 30);
-        } else if (degree.includes('associate')) {
-          entryScore += 20;
-          console.log('Associate degree points:', 20);
-        }
-      }
-
-      // Score for recency (0-20 points)
-      if (edu.year) {
-        const year = parseInt(edu.year);
-        const currentYear = new Date().getFullYear();
-        const yearDiff = Math.abs(currentYear - year);
-        
-        if (yearDiff <= 2) {
-          entryScore += 20;
-          console.log('Very recent education points:', 20);
-        } else if (yearDiff <= 5) {
-          entryScore += 15;
-          console.log('Recent education points:', 15);
-        } else if (yearDiff <= 10) {
-          entryScore += 10;
-          console.log('Moderately recent education points:', 10);
-        } else {
-          entryScore += 5;
-          console.log('Older education points:', 5);
-        }
-      }
-
-      console.log(`Total points for entry ${index}:`, entryScore);
-      totalScore += entryScore;
-    });
-
-    // Normalize to 100-point scale
-    const finalScore = Math.min(100, totalScore);
-    console.log('Final education score:', finalScore);
-    return finalScore;
-  };
-
-  const calculateExperienceScore = (experience) => {
-    if (!Array.isArray(experience)) return 0;
-    
-    let score = 0;
-    experience.forEach(exp => {
-      if (!exp) return;
-      
-      // Base points for having experience entry
-      let entryScore = 20;
-      
-      // Points for position level
-      if (exp.title) {
-        const title = exp.title.toLowerCase();
-        if (title.includes('senior') || title.includes('lead') || title.includes('manager')) {
-          entryScore += 30;
-        } else if (title.includes('developer') || title.includes('engineer')) {
-          entryScore += 20;
-        }
-      }
-      
-      // Points for duration
-      if (exp.duration) {
-        const durationText = exp.duration.toLowerCase();
-        const years = durationText.includes('present') ? 
-          new Date().getFullYear() - parseInt(durationText.match(/\d{4}/)[0]) :
-          (durationText.match(/\d{4}/g) || []).reduce((a, b) => Math.abs(parseInt(b) - parseInt(a)), 0);
-        entryScore += Math.min(30, years * 10); // 10 points per year up to 30 points
-      }
-      
-      // Points for description detail
-      if (Array.isArray(exp.description) && exp.description.length > 0) {
-        entryScore += Math.min(20, exp.description.length * 5); // 5 points per bullet point up to 20 points
-      }
-      
-      score += entryScore;
-    });
-    
-    return Math.min(100, score);
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Resume Analysis Results',
-        text: `My resume analysis score: ${analysis.overall_score}`,
-      });
-    }
-  };
-
-  const renderRecommendations = () => {
-    console.log('Rendering recommendations with analysis:', analysis);
-    
-    if (!analysis) {
-      console.log('No analysis data found');
+  // Update the renderSkillsSection function
+  const renderSkillsSection = () => {
+    if (!analysis?.skills_analysis) {
+      console.log('No skills analysis data available');
       return null;
     }
 
-    const courses = analysis.course_recommendations || [];
-    const certifications = analysis.certification_recommendations || [];
-    console.log('Recommendations data:', { courses, certifications });
-
+    const { matched_skills = [], missing_skills = [], skills_match_score = 0 } = analysis.skills_analysis;
+    
+    console.log('Rendering skills section:', {
+      matched_skills,
+      missing_skills,
+      skills_match_score
+    });
+    
     return (
       <>
+        <Typography variant="h6" gutterBottom>
+          <AssessmentIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Skills Analysis
+        </Typography>
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Typography variant="subtitle1">
+              Skills Match
+            </Typography>
+            <Chip
+              label={`${Math.round(skills_match_score)}% Match`}
+              color={skills_match_score >= 80 ? 'success' : 
+                     skills_match_score >= 60 ? 'primary' : 
+                     skills_match_score >= 40 ? 'warning' : 'error'}
+              variant="outlined"
+            />
+          </Box>
+          <Typography variant="subtitle1" gutterBottom>
+            Your Technical Skills ({matched_skills.length})
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {matched_skills.map((skill, index) => (
+              <Tooltip 
+                key={index} 
+                title={
+                  `Level: ${skill.level || 'Not specified'}
+                  ${skill.years ? `\nExperience: ${skill.years} years` : ''}`
+                }
+              >
+                <Chip
+                  label={skill.name}
+                  color="primary"
+                  variant="outlined"
+                />
+              </Tooltip>
+            ))}
+            {matched_skills.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                No matched skills found. Try adding more relevant skills to your resume.
+              </Typography>
+            )}
+          </Box>
+        </Box>
+        <Box>
+          <Typography variant="subtitle1" gutterBottom>
+            Suggested Skills for Growth
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Based on job market demand and your profile
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {missing_skills.map((skill, index) => (
+              <Tooltip 
+                key={index} 
+                title={`Market Demand: ${skill.market_demand || 'High'}\nRequired Level: ${skill.required_level || 'High'}`}
+              >
+                <Chip
+                  label={skill.name}
+                  color="info"
+                  variant="outlined"
+                />
+              </Tooltip>
+            ))}
+            {missing_skills.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                Great job! Your skills align well with industry standards.
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </>
+    );
+  };
+
+  // Update the renderRecommendations function
+  const renderRecommendations = () => {
+    if (!analysis?.recommendations) return null;
+
+    const { courses = [], certifications = [], jobs = [] } = analysis.recommendations;
+
+    console.log('Rendering recommendations:', { courses, certifications, jobs });
+
+    return (
+      <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <RecommendationCard elevation={3}>
             <Typography variant="h6" gutterBottom>
               <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Recommended Courses
+              AI-Recommended Courses
             </Typography>
             <List>
               {courses && courses.length > 0 ? (
@@ -658,44 +846,123 @@ const AIAnalysis = () => {
                   <ListItem key={index} divider={index < courses.length - 1}>
                     <ListItemText
                       primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography component="div" variant="subtitle1">{course.title}</Typography>
-                          <Chip 
-                            label={`${course.match_score}% Match`}
-                            color="primary"
-                            size="small"
-                            sx={{ ml: 1 }}
-                          />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="subtitle1">
+                            {course.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {course.course_link && (
+                              <Link 
+                                href={course.course_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  color: 'primary.main',
+                                  textDecoration: 'none',
+                                  '&:hover': {
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <OpenInNewIcon sx={{ fontSize: 14 }} />
+                                  View Course
+                                </Typography>
+                              </Link>
+                            )}
+                            {course.udemy_courses && course.udemy_courses.length > 0 && (
+                              course.udemy_courses.map((udemyCourse, udemyIndex) => (
+                                <Link 
+                                  key={udemyIndex}
+                                  href={udemyCourse.udemy_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    '&:hover': {
+                                      textDecoration: 'underline',
+                                    },
+                                  }}
+                                >
+                                  <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                                    View on Udemy
+                                  </Typography>
+                                </Link>
+                              ))
+                            )}
+                          </Box>
                         </Box>
                       }
                       secondary={
-                        <>
-                          <Typography component="div" variant="body2" color="text.secondary">
+                        <Box>
+                          <Typography variant="body2" color="text.secondary">
                             {course.description}
                           </Typography>
-                          <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ mt: 1 }}>
                             <Chip 
-                              label={`Provider: ${course.provider}`}
-                              variant="outlined"
-                              size="small"
+                              label={course.level} 
+                              size="small" 
+                              color="primary" 
+                              sx={{ mr: 1 }} 
                             />
                             <Chip 
-                              label={`Level: ${course.level}`}
-                              variant="outlined"
+                              label={`${Math.round(course.match_score)}% Match`}
                               size="small"
+                              color="success"
+                              sx={{ mr: 1 }}
                             />
+                            {course.udemy_courses && course.udemy_courses[0] && (
+                              <>
+                                <Chip 
+                                  label={`${course.udemy_courses[0].duration}`} 
+                                  size="small" 
+                                  variant="outlined" 
+                                  sx={{ mr: 1 }} 
+                                />
+                                <Chip 
+                                  label={`${course.udemy_courses[0].rating}/5`} 
+                                  size="small" 
+                                  variant="outlined" 
+                                  sx={{ mr: 1 }}
+                                />
+                                <Chip 
+                                  label={`${course.udemy_courses[0].students_count} students`} 
+                                  size="small" 
+                                  variant="outlined" 
+                                />
+                              </>
+                            )}
                           </Box>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            href={course.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ mt: 1 }}
-                          >
-                            Learn More
-                          </Button>
-                        </>
+                          {Array.isArray(course.skills_covered) && course.skills_covered.length > 0 && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Skills Covered:
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {course.skills_covered.map((skill, skillIndex) => (
+                                  <Chip
+                                    key={skillIndex}
+                                    label={skill}
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
+                          {course.udemy_courses && course.udemy_courses[0] && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Instructor: {course.udemy_courses[0].instructor}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                Last Updated: {new Date(course.udemy_courses[0].last_updated).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
                       }
                     />
                   </ListItem>
@@ -703,8 +970,8 @@ const AIAnalysis = () => {
               ) : (
                 <ListItem>
                   <ListItemText 
-                    primary="No course recommendations available" 
-                    secondary="Try uploading a resume with more detailed skills"
+                    primary="Analyzing Your Skills..."
+                    secondary="Please wait while we find courses that match your skill level and career goals"
                   />
                 </ListItem>
               )}
@@ -715,53 +982,49 @@ const AIAnalysis = () => {
           <RecommendationCard elevation={3}>
             <Typography variant="h6" gutterBottom>
               <WorkIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Recommended Certifications
+              AI-Recommended Certifications
             </Typography>
             <List>
               {certifications && certifications.length > 0 ? (
                 certifications.map((cert, index) => (
                   <ListItem key={index} divider={index < certifications.length - 1}>
                     <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography component="div" variant="subtitle1">{cert.title}</Typography>
-                          {cert.match_score && (
-                            <Chip 
-                              label={`${cert.match_score}% Match`}
-                              color="primary"
-                              size="small"
-                              sx={{ ml: 1 }}
-                            />
-                          )}
-                        </Box>
-                      }
+                      primary={cert.name}
                       secondary={
                         <>
-                          <Typography component="div" variant="body2" color="text.secondary">
-                            {cert.description}
-                          </Typography>
-                          <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">{cert.description}</Typography>
+                          <Box sx={{ mt: 1 }}>
                             <Chip 
-                              label={`Provider: ${cert.provider}`}
-                              variant="outlined"
-                              size="small"
+                              size="small" 
+                              label={`Match: ${Math.round(cert.match_score)}%`}
+                              color="primary"
+                              sx={{ mr: 1, mb: 1 }}
                             />
-                            <Chip 
-                              label={`Level: ${cert.level}`}
-                              variant="outlined"
-                              size="small"
-                            />
+                            {cert.provider && (
+                              <Chip size="small" label={`Provider: ${cert.provider}`} sx={{ mr: 1, mb: 1 }} />
+                            )}
+                            {cert.level && (
+                              <Chip size="small" label={`Level: ${cert.level}`} sx={{ mr: 1, mb: 1 }} />
+                            )}
                           </Box>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            href={cert.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ mt: 1 }}
-                          >
-                            Learn More
-                          </Button>
+                          {Array.isArray(cert.required_skills) && cert.required_skills.length > 0 && (
+                            <Box sx={{ mt: 1 }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Required Skills:
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                {cert.required_skills.map((skill, i) => (
+                                  <Chip
+                                    key={i}
+                                    label={skill}
+                                    size="small"
+                                    variant="outlined"
+                                    color={cert.matched_skills?.includes(skill) ? "success" : "warning"}
+                                  />
+                                ))}
+                              </Box>
+                            </Box>
+                          )}
                         </>
                       }
                     />
@@ -770,65 +1033,17 @@ const AIAnalysis = () => {
               ) : (
                 <ListItem>
                   <ListItemText 
-                    primary="No certification recommendations available" 
-                    secondary="Try uploading a resume with more detailed skills"
+                    primary="Analyzing Your Skills..."
+                    secondary="Please wait while we find certifications that validate your expertise"
                   />
                 </ListItem>
               )}
             </List>
           </RecommendationCard>
         </Grid>
-      </>
+      </Grid>
     );
   };
-
-  const radarData = useMemo(() => {
-    if (!analysis) return [];
-    
-    console.log('Preparing radar data with analysis:', analysis);
-    
-    // Calculate normalized scores
-    const textQualityScore = Math.round(analysis.text_quality?.readability_score || 0);
-    const skillsMatchScore = Math.round((analysis.skills_analysis?.matched_skills?.length || 0) / 
-                                     (analysis.skills_analysis?.matched_skills?.length + 
-                                      analysis.skills_analysis?.missing_skills?.length || 1) * 100);
-    const educationScore = Math.round(analysis.education_score || 0);
-    const experienceScore = Math.round(analysis.experience_score || 0);
-    const overallScore = Math.round(analysis.overall_score || 0);
-    
-    return [
-      {
-        subject: 'Text Quality',
-        A: textQualityScore,
-        fullMark: 100,
-        description: 'Measures the clarity and professionalism of your writing'
-      },
-      {
-        subject: 'Skills Match',
-        A: skillsMatchScore,
-        fullMark: 100,
-        description: 'How well your skills match job requirements'
-      },
-      {
-        subject: 'Education',
-        A: educationScore,
-        fullMark: 100,
-        description: 'Assessment of your educational background'
-      },
-      {
-        subject: 'Experience',
-        A: experienceScore,
-        fullMark: 100,
-        description: 'Evaluation of your work experience'
-      },
-      {
-        subject: 'Overall',
-        A: overallScore,
-        fullMark: 100,
-        description: 'Combined score of all factors'
-      }
-    ];
-  }, [analysis]);
 
   // Update the radar chart component
   const renderRadarChart = () => (
@@ -967,6 +1182,17 @@ const AIAnalysis = () => {
     };
   }, []);
 
+  // Add useEffect to trigger analysis on mount
+  useEffect(() => {
+    const startAnalysis = async () => {
+      const serverRunning = await checkServerStatus();
+      if (serverRunning) {
+        await analyzeResume();
+      }
+    };
+    startAnalysis();
+  }, [checkServerStatus, analyzeResume]);
+
   if (loading) {
     return (
       <LoadingContainer>
@@ -1063,7 +1289,7 @@ const AIAnalysis = () => {
               Text Quality
             </Typography>
             <Typography variant="h4" color="primary">
-              {analysis.text_quality.readability_score}%
+              {analysis.text_quality.score}%
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Readability Score
@@ -1078,10 +1304,10 @@ const AIAnalysis = () => {
               Skills Match
             </Typography>
             <Typography variant="h4" color="primary">
-              {analysis.skills_analysis.matched_skills.length}
+              {analysis.skills_analysis.skills_match_score}%
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Matched Skills
+              Industry Match
             </Typography>
           </MetricCard>
         </Grid>
@@ -1106,32 +1332,32 @@ const AIAnalysis = () => {
             Recommended Jobs
           </Typography>
           <Grid container spacing={3}>
-            {analysis.job_recommendations.map((job, index) => (
+            {(analysis?.recommendations?.jobs || []).map((job, index) => (
               <Grid item xs={12} md={4} key={index}>
                 <MetricCard elevation={3}>
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="h6" gutterBottom>
-                      {job.title}
+                      {job.title || job.name || 'Job Title'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {job.description}
+                      {job.description || 'No description available'}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Chip
-                        label={`${job.match_percentage}% Match`}
-                        color={job.match_percentage >= 80 ? 'success' : 
-                               job.match_percentage >= 60 ? 'primary' : 
-                               job.match_percentage >= 40 ? 'warning' : 'error'}
+                        label={`${Math.round(job.match_score || job.match_percentage || 0)}% Match`}
+                        color={job.match_score >= 80 ? 'success' : 
+                               job.match_score >= 60 ? 'primary' : 
+                               job.match_score >= 40 ? 'warning' : 'error'}
                         size="small"
                       />
                       <Chip
-                        label={job.level}
+                        label={job.level || 'Entry Level'}
                         variant="outlined"
                         size="small"
                       />
                     </Box>
                     <Typography variant="subtitle2" color="primary">
-                      Salary Range: {job.salary_range}
+                      Salary Range: {job.salary_range || 'Not specified'}
                     </Typography>
                   </Box>
                   <Box sx={{ mt: 'auto' }}>
@@ -1139,10 +1365,10 @@ const AIAnalysis = () => {
                       Required Skills:
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                      {job.required_skills?.slice(0, 3).map((skill, i) => (
+                      {(job.required_skills || []).slice(0, 3).map((skill, i) => (
                         <Chip
                           key={i}
-                          label={skill}
+                          label={typeof skill === 'string' ? skill : skill.name}
                           size="small"
                           variant="outlined"
                           color="primary"
@@ -1151,12 +1377,12 @@ const AIAnalysis = () => {
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
                       <Chip
-                        label={`Growth: ${job.growth_potential}`}
+                        label={`Growth: ${job.growth_potential || 'High'}`}
                         size="small"
                         color="success"
                       />
                       <Chip
-                        label={`Demand: ${job.market_demand}`}
+                        label={`Demand: ${job.market_demand || 'High'}`}
                         size="small"
                         color="info"
                       />
@@ -1165,6 +1391,18 @@ const AIAnalysis = () => {
                 </MetricCard>
               </Grid>
             ))}
+            {(!analysis?.recommendations?.jobs || analysis.recommendations.jobs.length === 0) && (
+              <Grid item xs={12}>
+                <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography variant="h6" color="text.secondary">
+                    Analyzing Profile
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Please wait while we generate personalized job recommendations
+                  </Typography>
+                </Paper>
+              </Grid>
+            )}
           </Grid>
         </Grid>
 
@@ -1174,9 +1412,7 @@ const AIAnalysis = () => {
             <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
             Recommendations
           </Typography>
-          <Grid container spacing={3}>
-            {renderRecommendations()}
-          </Grid>
+          {renderRecommendations()}
         </Grid>
 
         {/* Skills Details */}
@@ -1187,16 +1423,16 @@ const AIAnalysis = () => {
               Matched Skills
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {analysis.skills_analysis.matched_skills.map((skill, index) => (
+              {(analysis?.skills_analysis?.matched_skills || []).map((skill, index) => (
                 <Chip
                   key={index}
-                  label={`${skill.name} (${skill.proficiency})`}
+                  label={typeof skill === 'string' ? skill : `${skill.name} (${skill.level || 'N/A'})`}
                   color="success"
                   variant="outlined"
                   sx={{ mb: 1 }}
                 />
               ))}
-              {analysis.skills_analysis.matched_skills.length === 0 && (
+              {(!analysis?.skills_analysis?.matched_skills || analysis.skills_analysis.matched_skills.length === 0) && (
                 <Typography variant="body2" color="text.secondary">
                   No matched skills found. Try adding more relevant skills to your resume.
                 </Typography>
@@ -1209,19 +1445,19 @@ const AIAnalysis = () => {
           <MetricCard elevation={3}>
             <Typography variant="h6" gutterBottom>
               <WarningIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Missing Skills
+              Suggested Skills
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {analysis.skills_analysis.missing_skills.map((skill, index) => (
+              {(analysis?.skills_analysis?.missing_skills || []).map((skill, index) => (
                 <Chip
                   key={index}
-                  label={`${skill.name} (${skill.market_demand})`}
-                  color="warning"
+                  label={typeof skill === 'string' ? skill : `${skill.name} (${skill.demand || 'High'})`}
+                  color="info"
                   variant="outlined"
                   sx={{ mb: 1 }}
                 />
               ))}
-              {analysis.skills_analysis.missing_skills.length === 0 && (
+              {(!analysis?.skills_analysis?.missing_skills || analysis.skills_analysis.missing_skills.length === 0) && (
                 <Typography variant="body2" color="text.secondary">
                   Great job! You have all the required skills.
                 </Typography>
