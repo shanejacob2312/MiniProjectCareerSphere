@@ -408,6 +408,6 @@ router.post('/analyze', async (req, res) => {
         console.error('Error in analyze route:', error);
         res.status(500).json({ error: error.message || 'Failed to analyze resume' });
     }
-});
+  });
   
 module.exports = router;
