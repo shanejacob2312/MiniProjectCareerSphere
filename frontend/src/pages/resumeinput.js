@@ -88,65 +88,77 @@ const ResumeInput = () => {
 
       // Format the resume data with all form fields
       const resumeData = {
+        text: `
+          Name: ${formData.name}
+          Job Type: ${formData.jobType}
+          Age: ${formData.age || 'N/A'}
+          Location: ${formData.location || 'N/A'}
+          Gender: ${formData.gender || 'N/A'}
+          Phone: ${formData.phone || 'N/A'}
+          Email: ${formData.email || 'N/A'}
+
+          Summary:
+          ${formData.summary || 'N/A'}
+
+          Education:
+          ${formData.education.map(edu => 
+            `${edu.degree} from ${edu.institution} (${edu.year})
+             GPA: ${edu.gpa || 'N/A'}
+             Honors: ${edu.honors || 'N/A'}`
+          ).join('\n')}
+
+          Experience:
+          ${formData.experience.map(exp => 
+            `${exp.title} at ${exp.company}
+             Duration: ${exp.duration || 'N/A'}
+             ${exp.description || ''}`
+          ).join('\n\n')}
+
+          Skills:
+          ${formData.skills.map(skill => 
+            `${skill.name} (${skill.level}, ${skill.yearsOfExperience} years)`
+          ).join(', ')}
+        `,
         name: formData.name,
-        age: formData.age || null,
-        location: formData.location || "",
-        gender: formData.gender || "",
-        phone: formData.phone || "",
-        email: formData.email || "",
-        jobType: formData.jobType, // Changed from job_type to jobType to match schema
-        skills: formData.skills.filter(skill => skill.name.trim() !== ""), // Remove empty skills
+        age: formData.age || '',
+        location: formData.location || '',
+        gender: formData.gender || '',
+        phone: formData.phone || '',
+        email: formData.email || '',
+        job_type: formData.jobType,
+        skills: formData.skills.filter(skill => skill.name.trim() !== ''),
         education: formData.education
-          .filter(edu => edu.degree && edu.institution) // Remove empty education entries
+          .filter(edu => edu.degree && edu.institution)
           .map(edu => ({
             degree: edu.degree,
             institution: edu.institution,
-            year: edu.year || "",
-            gpa: edu.gpa || "",
-            honors: edu.honors || ""
+            year: edu.year || '',
+            gpa: edu.gpa || '',
+            honors: edu.honors || ''
           })),
         experience: formData.experience
           .filter(exp => exp.title && exp.company)
           .map(exp => ({
             title: exp.title,
             company: exp.company,
-            duration: exp.duration || "",
-            description: exp.description || ""
+            duration: exp.duration || '',
+            description: exp.description || ''
           })),
-        summary: formData.summary || "",
+        summary: formData.summary || '',
         type: 'created'
       };
 
-      console.log('Sending resume data:', resumeData); // Debug log
+      console.log('Sending resume data:', resumeData);
 
-      // Save the resume
-      const response = await fetch('http://localhost:5000/api/resumes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(resumeData)
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to save resume');
-      }
-
-      // Navigate to resume builder with the saved resume data
-      navigate("/resumebuilder", { 
+      // Navigate to AI analysis with the resume data
+      navigate("/aianalysis", { 
         state: { 
-          resumeData: {
-            ...resumeData,
-            _id: responseData._id
-          }
+          resumeData: resumeData
         } 
       });
     } catch (err) {
-      console.error('Error saving resume:', err);
-      alert(err.message || 'Failed to save resume. Please try again.');
+      console.error('Error preparing resume for analysis:', err);
+      alert('Failed to prepare resume for analysis. Please try again.');
     }
   };
 

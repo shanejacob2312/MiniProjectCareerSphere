@@ -1,7 +1,12 @@
 const express = require("express");
 const multer = require("multer");
 const extractTextFromPDF = require("../utils/extracttext");
-const { analyzeResume } = require("../utils/bertanalysis");
+const { 
+    analyze_text_quality,
+    analyze_skills,
+    calculate_education_score,
+    calculate_experience_score
+} = require("../utils/analyzeresume");
 const path = require("path");
 const fs = require("fs");
 const router = express.Router();
@@ -169,6 +174,8 @@ Continue with similar recommendations:`;
                     }
                 );
 
+                console.log('API response status:', response.status);
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error(`HuggingFace API error with model ${model}:`, response.status, errorText);
@@ -311,38 +318,96 @@ Continue with similar recommendations:`;
 // Route to analyze resume
 router.post('/analyze', async (req, res) => {
     try {
-        const resumeData = req.body;
-        
-        if (!resumeData || !resumeData.text) {
-            return res.status(400).json({
-                error: 'Invalid resume data. Please provide resume text.'
-            });
-        }
+        console.log('Received resume analysis request:', req.body);
+        const { text, job_type, skills, education, experience, location } = req.body;
 
-        // Analyze resume
-        const analysis = await analyzeResume(resumeData);
+        // Analyze text quality
+        console.log('Analyzing text quality...');
+        const text_quality = analyze_text_quality(text);
+        console.log('Text quality analysis result:', text_quality);
         
-        // Validate analysis results
-        if (!analysis.skills_analysis || !analysis.skills_analysis.matched_skills) {
-            throw new Error('Invalid analysis results');
-        }
-
-        // Send response
-      res.json(analysis);
-
-    } catch (error) {
-        console.error('Resume analysis failed:', error);
+        // Analyze skills
+        console.log('Analyzing skills...');
+        const skills_analysis = analyze_skills(skills, job_type);
+        console.log('Skills analysis result:', skills_analysis);
         
-        // Send a more specific error response
-        res.status(500).json({
-            error: 'Resume analysis failed',
-            message: error.message,
-            details: {
-                type: error.name,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        // Calculate education and experience scores
+        console.log('Calculating education score...');
+        const education_score = calculate_education_score(education);
+        console.log('Education score:', education_score);
+
+        console.log('Calculating experience score...');
+        const experience_score = calculate_experience_score(experience);
+        console.log('Experience score:', experience_score);
+        
+        // Get AI recommendations
+        console.log('Getting AI recommendations...');
+        const recommendations = await getRecommendationsFromHuggingFace(job_type, skills);
+        console.log('AI recommendations:', recommendations);
+        
+        // Calculate overall score
+        const overall_score = Math.round(
+            text_quality.readability_score * 0.2 +
+            skills_analysis.skills_match_score * 0.3 +
+            education_score * 0.25 +
+            experience_score * 0.25
+        );
+
+        // Generate job recommendations based on skills and experience
+        const job_recommendations = [
+            {
+                title: 'Senior Software Engineer',
+                company: 'Tech Innovation Corp',
+                location: location || 'Remote',
+                match_percentage: Math.min(95, Math.round(skills_analysis.skills_match_score)),
+                description: 'Lead development of cloud-native applications and mentor junior developers.',
+                required_skills: skills_analysis.matched_skills.slice(0, 5)
+            },
+            {
+                title: 'Full Stack Developer',
+                company: 'Digital Solutions Inc',
+                location: location || 'Remote',
+                match_percentage: Math.min(90, Math.round(skills_analysis.skills_match_score)),
+                description: 'Develop full-stack applications using React and Node.js.',
+                required_skills: skills_analysis.matched_skills.slice(0, 5)
+            },
+            {
+                title: 'Backend Developer',
+                company: 'Cloud Systems Ltd',
+                location: location || 'Remote',
+                match_percentage: Math.min(85, Math.round(skills_analysis.skills_match_score)),
+                description: 'Build scalable backend services and APIs.',
+                required_skills: skills_analysis.matched_skills.slice(0, 5)
             }
-        });
+        ];
+
+        const response = {
+            overall_score,
+            text_quality: {
+                score: text_quality.readability_score,
+                readability: text_quality.readability_level,
+                clarity: text_quality.clarity_level,
+                suggestions: text_quality.suggestions
+            },
+            skills_analysis: {
+                matched_skills: skills_analysis.matched_skills || [],
+                missing_skills: skills_analysis.missing_skills || [],
+                skills_match_score: skills_analysis.skills_match_score || 0
+            },
+            education_score,
+            experience_score,
+            job_recommendations,
+            course_recommendations: recommendations?.courses || [],
+            certification_recommendations: recommendations?.certifications || []
+        };
+
+        console.log('Sending analysis response:', response);
+        res.json(response);
+        
+    } catch (error) {
+        console.error('Error in analyze route:', error);
+        res.status(500).json({ error: error.message || 'Failed to analyze resume' });
     }
-  });
+});
   
 module.exports = router;

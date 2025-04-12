@@ -214,11 +214,43 @@ const UploadResume = () => {
       const resumeData = {
         text: cleanedText,
         job_type: jobType.trim(),
-        skills: skills,
-        education: education,
-        experience: experience,
-        summary: cleanedText,
-        type: 'uploaded'
+        skills: skills.map(skill => ({
+          name: skill,
+          level: 'Intermediate',  // Default level for uploaded resumes
+          yearsOfExperience: 0    // Default years for uploaded resumes
+        })),
+        education: education.map(edu => ({
+          degree: edu.degree || '',
+          institution: edu.institution || '',
+          year: edu.year || '',
+          gpa: edu.gpa || '',
+          honors: edu.honors || ''
+        })),
+        experience: experience.map(exp => ({
+          title: exp.title || '',
+          company: exp.company || '',
+          duration: exp.duration || '',
+          description: exp.description || ''
+        })),
+        summary: cleanedText.substring(0, 500), // First 500 characters as summary
+        type: 'uploaded',
+        // Add structure analysis data
+        structure_score: 0,  // Will be calculated by backend
+        formatting: {
+          hasHeaders: cleanedText.match(/^[A-Z\s]+:/gm) !== null,
+          hasBulletPoints: cleanedText.includes('•'),
+          hasProperSpacing: cleanedText.match(/\n\s*\n/) !== null
+        },
+        parsed_sections: {
+          hasEducation: education.length > 0,
+          hasExperience: experience.length > 0,
+          hasSkills: skills.length > 0,
+          sectionCount: [
+            education.length > 0,
+            experience.length > 0,
+            skills.length > 0
+          ].filter(Boolean).length
+        }
       };
 
       console.log('Final resume data being sent:', resumeData);

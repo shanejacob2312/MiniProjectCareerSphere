@@ -369,6 +369,293 @@ const analyzeResume = async (resumeData) => {
   }
 };
 
+const natural = require('natural');
+const { TfIdf } = natural;
+
+// Function to analyze text quality
+function analyze_text_quality(text) {
+    try {
+        if (!text) {
+            return {
+                readability_score: 0,
+                readability_level: 'Poor',
+                clarity_level: 'Poor',
+                suggestions: ['No text provided for analysis']
+            };
+        }
+
+        // Split text into sentences and words
+        const sentences = text.split(/[.!?]+/).filter(Boolean);
+        const words = text.split(/\s+/).filter(Boolean);
+        
+        // Calculate basic metrics
+        const avgWordsPerSentence = words.length / sentences.length;
+        const avgWordLength = words.reduce((sum, word) => sum + word.length, 0) / words.length;
+        
+        // Calculate readability score (Flesch Reading Ease adapted)
+        const readabilityScore = Math.max(0, Math.min(100, 206.835 - (0.8 * avgWordsPerSentence) - (70 * avgWordLength / 5)));
+        
+        // Determine readability level
+        let readabilityLevel;
+        if (readabilityScore >= 80) readabilityLevel = 'Excellent';
+        else if (readabilityScore >= 60) readabilityLevel = 'Good';
+        else if (readabilityScore >= 40) readabilityLevel = 'Fair';
+        else readabilityLevel = 'Poor';
+
+        // Analyze clarity
+        const clarityIssues = [];
+        if (avgWordsPerSentence > 25) clarityIssues.push('Sentences are too long');
+        if (avgWordLength > 6) clarityIssues.push('Words are too complex');
+        if (sentences.length < 3) clarityIssues.push('Content is too brief');
+
+        // Determine clarity level
+        let clarityLevel;
+        if (clarityIssues.length <= 1) clarityLevel = 'Excellent';
+        else if (clarityIssues.length === 2) clarityLevel = 'Good';
+        else clarityLevel = 'Fair';
+
+        return {
+            readability_score: Math.round(readabilityScore),
+            readability_level: readabilityLevel,
+            clarity_level: clarityLevel,
+            suggestions: clarityIssues.length > 0 ? clarityIssues : ['Text is well-structured']
+        };
+    } catch (error) {
+        console.error('Error in text quality analysis:', error);
+        return {
+            readability_score: 0,
+            readability_level: 'Error',
+            clarity_level: 'Error',
+            suggestions: ['Error analyzing text quality']
+        };
+    }
+}
+
+// Function to analyze skills match
+function analyze_skills(skills, job_type) {
+    try {
+        if (!Array.isArray(skills) || skills.length === 0) {
+            return {
+                matched_skills: [],
+                missing_skills: [],
+                skills_match_score: 0
+            };
+        }
+
+        // Define required skills based on job type (simplified example)
+        const jobSkillsMap = {
+            'software developer': [
+                { name: 'JavaScript', level: 'Intermediate', years: 2 },
+                { name: 'Python', level: 'Intermediate', years: 2 },
+                { name: 'Java', level: 'Intermediate', years: 2 },
+                { name: 'React', level: 'Intermediate', years: 2 },
+                { name: 'Node.js', level: 'Intermediate', years: 2 },
+                { name: 'SQL', level: 'Intermediate', years: 2 },
+                { name: 'Git', level: 'Intermediate', years: 1 },
+                { name: 'APIs', level: 'Intermediate', years: 2 },
+                { name: 'Data Structures', level: 'Intermediate', years: 2 },
+                { name: 'Algorithms', level: 'Intermediate', years: 2 },
+                { name: 'AWS', level: 'Intermediate', years: 1 },
+                { name: 'Docker', level: 'Intermediate', years: 1 }
+            ],
+            'data scientist': [
+                { name: 'Python', level: 'Advanced', years: 3 },
+                { name: 'R', level: 'Intermediate', years: 2 },
+                { name: 'SQL', level: 'Advanced', years: 3 },
+                { name: 'Machine Learning', level: 'Advanced', years: 3 },
+                { name: 'Statistics', level: 'Advanced', years: 3 },
+                { name: 'Data Visualization', level: 'Intermediate', years: 2 },
+                { name: 'Pandas', level: 'Advanced', years: 2 },
+                { name: 'NumPy', level: 'Advanced', years: 2 },
+                { name: 'Scikit-learn', level: 'Advanced', years: 2 }
+            ],
+            'web developer': [
+                { name: 'HTML', level: 'Advanced', years: 3 },
+                { name: 'CSS', level: 'Advanced', years: 3 },
+                { name: 'JavaScript', level: 'Advanced', years: 3 },
+                { name: 'React', level: 'Intermediate', years: 2 },
+                { name: 'Node.js', level: 'Intermediate', years: 2 },
+                { name: 'REST APIs', level: 'Intermediate', years: 2 },
+                { name: 'Git', level: 'Intermediate', years: 2 },
+                { name: 'Responsive Design', level: 'Intermediate', years: 2 },
+                { name: 'Web Security', level: 'Intermediate', years: 2 }
+            ]
+        };
+
+        // Get required skills for the job type (case-insensitive)
+        const jobTypeKey = Object.keys(jobSkillsMap)
+            .find(key => key.toLowerCase() === job_type.toLowerCase()) || 'software developer';
+        const requiredSkills = jobSkillsMap[jobTypeKey];
+
+        // Process user skills to handle both string and object formats
+        const userSkills = skills.map(skill => {
+            if (typeof skill === 'string') {
+                return {
+                    name: skill.toLowerCase(),
+                    level: 'Intermediate',
+                    years: 1
+                };
+            }
+            return {
+                name: skill.name.toLowerCase(),
+                level: skill.level || 'Intermediate',
+                years: skill.years || 1
+            };
+        });
+
+        // Find matched and missing skills
+        const matched_skills = [];
+        const missing_skills = [];
+
+        requiredSkills.forEach(requiredSkill => {
+            const found = userSkills.find(userSkill => 
+                userSkill.name.includes(requiredSkill.name.toLowerCase()) ||
+                requiredSkill.name.toLowerCase().includes(userSkill.name)
+            );
+
+            if (found) {
+                matched_skills.push({
+                    name: requiredSkill.name,
+                    level: found.level,
+                    years: found.years
+                });
+            } else {
+                missing_skills.push({
+                    name: requiredSkill.name,
+                    required_level: requiredSkill.level,
+                    market_demand: 'High'
+                });
+            }
+        });
+
+        // Calculate match percentage
+        const match_percentage = (matched_skills.length / requiredSkills.length) * 100;
+
+        return {
+            matched_skills,
+            missing_skills,
+            skills_match_score: Math.round(match_percentage)
+        };
+    } catch (error) {
+        console.error('Error in skills analysis:', error);
+        return {
+            matched_skills: [],
+            missing_skills: [],
+            skills_match_score: 0
+        };
+    }
+}
+
+// Function to calculate education score
+function calculate_education_score(education) {
+    try {
+        if (!Array.isArray(education) || education.length === 0) {
+            return 0;
+        }
+
+        const degreeWeights = {
+            'phd': 100,
+            'doctorate': 100,
+            'master': 85,
+            'masters': 85,
+            'bachelor': 70,
+            'bachelors': 70,
+            'associate': 50,
+            'associates': 50,
+            'certificate': 30,
+            'certification': 30,
+            'diploma': 40
+        };
+
+        let maxScore = 0;
+        education.forEach(edu => {
+            let score = 50; // Base score
+
+            // Check degree level
+            const degree = edu.degree?.toLowerCase() || '';
+            for (const [key, weight] of Object.entries(degreeWeights)) {
+                if (degree.includes(key)) {
+                    score = weight;
+                    break;
+                }
+            }
+
+            // Add bonus for GPA if available
+            if (edu.gpa) {
+                const gpa = parseFloat(edu.gpa);
+                if (gpa >= 3.5) score += 15;
+                else if (gpa >= 3.0) score += 10;
+                else if (gpa >= 2.5) score += 5;
+            }
+
+            // Update max score
+            maxScore = Math.max(maxScore, score);
+        });
+
+        return Math.min(100, maxScore);
+    } catch (error) {
+        console.error('Error in education score calculation:', error);
+        return 0;
+    }
+}
+
+// Function to calculate experience score
+function calculate_experience_score(experience) {
+    try {
+        if (!Array.isArray(experience) || experience.length === 0) {
+            return 0;
+        }
+
+        let totalScore = 0;
+        const roleWeights = {
+            'senior': 20,
+            'lead': 20,
+            'manager': 20,
+            'architect': 20,
+            'principal': 25,
+            'director': 25,
+            'head': 25,
+            'chief': 30,
+            'vp': 30,
+            'president': 30,
+            'founder': 30
+        };
+
+        experience.forEach(exp => {
+            let score = 10; // Base score per experience entry
+
+            // Add score based on role seniority
+            const title = exp.title?.toLowerCase() || '';
+            for (const [key, weight] of Object.entries(roleWeights)) {
+                if (title.includes(key)) {
+                    score += weight;
+                    break;
+                }
+            }
+
+            // Add score based on duration
+            const duration = exp.duration?.toLowerCase() || '';
+            const years = parseInt(duration) || 0;
+            score += Math.min(years * 5, 30); // Up to 30 points for duration
+
+            totalScore += score;
+        });
+
+        // Normalize score to 0-100 range
+        const maxPossibleScore = 100; // Maximum possible score
+        const normalizedScore = Math.min(100, (totalScore / maxPossibleScore) * 100);
+
+        return Math.round(normalizedScore);
+    } catch (error) {
+        console.error('Error in experience score calculation:', error);
+        return 0;
+    }
+}
+
 module.exports = {
-  analyzeResume
+  analyzeResume,
+  analyze_text_quality,
+  analyze_skills,
+  calculate_education_score,
+  calculate_experience_score
 }; 

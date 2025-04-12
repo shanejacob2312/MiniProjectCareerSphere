@@ -55,19 +55,35 @@ const ResumeBuilder = () => {
       const analysisData = {
         text: resumeData.summary,
         job_type: resumeData.jobType,
-        skills: resumeData.skills,
-        education: resumeData.education,
+        skills: resumeData.skills.map(skill => ({
+          name: skill.name,
+          level: skill.level,
+          yearsOfExperience: skill.yearsOfExperience
+        })),
+        education: resumeData.education.map(edu => ({
+          degree: edu.degree,
+          institution: edu.institution,
+          year: edu.year,
+          gpa: edu.gpa,
+          honors: edu.honors
+        })),
+        experience: resumeData.experience.map(exp => ({
+          title: exp.title,
+          company: exp.company,
+          duration: exp.duration,
+          description: exp.description
+        })),
         summary: resumeData.summary,
+        location: resumeData.location,
         type: 'created'
       };
+
+      console.log('Sending data for analysis:', analysisData); // Debug log
 
       // Navigate to AI analysis with the resume data
       navigate("/aianalysis", { 
         state: { 
-          resumeData: {
-            ...analysisData,
-            _id: resumeData._id // Use the existing resume ID
-          }
+          resumeData: analysisData
         } 
       });
     } catch (err) {
