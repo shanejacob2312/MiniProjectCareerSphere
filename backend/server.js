@@ -8,6 +8,7 @@ const multer = require("multer");
 const fs = require("fs"); // Import `fs` for file operations
 const extractTextFromPDF = require("./utils/extracttext"); // Create this file for text extraction
 const resumesRouter = require('./routes/resumes');
+const { verifyApiKey } = require('./utils/analyzeresume');
 
 dotenv.config(); // Load environment variables
 
@@ -70,20 +71,25 @@ app.use((req, res, next) => {
 // Static Files (for file uploads)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Connect to MongoDB
-const connectDB = async () => {
+// Initialize services
+const initializeServices = async () => {
   try {
+    // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
     console.log("✅ MongoDB Connected Successfully");
+
+    // Verify HuggingFace API key
+    await verifyApiKey();
+    console.log("✅ HuggingFace API Key Verified Successfully");
+
   } catch (err) {
-    console.error("❌ MongoDB Connection Error:", err);
-    process.exit(1); // Exit process if connection fails
+    console.error("❌ Service Initialization Error:", err);
+    process.exit(1); // Exit process if initialization fails
   }
 };
-connectDB();
 
 // Test Route
 app.get("/", (req, res) => {
@@ -175,6 +181,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Start server only after services are initialized
+const startServer = async () => {
+  try {
+    await initializeServices();
+    
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log('Environment variables loaded:', {
+        MONGODB_URI: process.env.MONGODB_URI ? '✓' : '✗',
+        JWT_SECRET: process.env.JWT_SECRET ? '✓' : '✗',
+        EMAIL_USER: process.env.EMAIL_USER ? '✓' : '✗',
+        EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? '✓' : '✗',
+        HUGGINGFACE_API_KEY: process.env.HUGGINGFACE_API_KEY ? '✓' : '✗'
+      });
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

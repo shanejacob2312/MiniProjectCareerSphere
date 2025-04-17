@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -187,37 +187,64 @@ const SkillsList = ({ title, skills, icon }) => {
     );
 };
 
-// Move validateAnalysisData before analyzeResume
+// Update the validateAnalysisData function
 const validateAnalysisData = (data) => {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid analysis data format');
-  }
+    if (!data || typeof data !== 'object') {
+        throw new Error('Invalid analysis data format');
+    }
 
-  // Validate skills analysis
-  if (!data.skills_analysis || typeof data.skills_analysis !== 'object') {
-    throw new Error('Invalid skills analysis data');
-  }
+    // Validate and normalize text quality
+    if (!data.text_quality || typeof data.text_quality !== 'object') {
+        data.text_quality = { score: 0, feedback: [] };
+    }
+    data.text_quality.score = Math.min(100, Math.max(0, data.text_quality.score || 0));
+    data.text_quality.feedback = Array.isArray(data.text_quality.feedback) ? data.text_quality.feedback : [];
 
-  // Ensure arrays exist and are properly formatted
-  data.skills_analysis.matched_skills = Array.isArray(data.skills_analysis.matched_skills) ? 
-    data.skills_analysis.matched_skills : [];
-  data.skills_analysis.missing_skills = Array.isArray(data.skills_analysis.missing_skills) ? 
-    data.skills_analysis.missing_skills : [];
+    // Validate and normalize skills analysis
+    if (!data.skills_analysis || typeof data.skills_analysis !== 'object') {
+        data.skills_analysis = { skills_match_score: 0, matched_skills: [], feedback: [] };
+    }
+    data.skills_analysis.skills_match_score = Math.min(100, Math.max(0, data.skills_analysis.skills_match_score || 0));
+    data.skills_analysis.matched_skills = Array.isArray(data.skills_analysis.matched_skills) ? 
+        data.skills_analysis.matched_skills.map(skill => typeof skill === 'string' ? { name: skill } : skill) : [];
+    data.skills_analysis.feedback = Array.isArray(data.skills_analysis.feedback) ? data.skills_analysis.feedback : [];
 
-  // Validate recommendations
-  data.job_recommendations = Array.isArray(data.job_recommendations) ? 
-    data.job_recommendations : [];
-  data.course_recommendations = Array.isArray(data.course_recommendations) ? 
-    data.course_recommendations : [];
-  data.certification_recommendations = Array.isArray(data.certification_recommendations) ? 
-    data.certification_recommendations : [];
+    // Validate and normalize scores
+    data.overall_score = Math.min(100, Math.max(0, data.overall_score || 0));
+    data.education_score = Math.min(100, Math.max(0, data.education_score || 0));
+    data.experience_score = Math.min(100, Math.max(0, data.experience_score || 0));
 
-  // Ensure scores are numbers
-  data.overall_score = Number(data.overall_score) || 0;
-  data.education_score = Number(data.education_score) || 0;
-  data.experience_score = Number(data.experience_score) || 0;
+    // Validate and normalize recommendations
+    data.job_recommendations = Array.isArray(data.job_recommendations) ? data.job_recommendations.map(job => ({
+        title: job.title || '',
+        company: job.company || '',
+        location: job.location || '',
+        description: job.description || '',
+        match_score: Math.min(100, Math.max(0, job.match_score || 0)),
+        matched_skills: Array.isArray(job.matched_skills) ? job.matched_skills : [],
+        missing_skills: Array.isArray(job.missing_skills) ? job.missing_skills : []
+    })) : [];
 
-  return data;
+    data.course_recommendations = Array.isArray(data.course_recommendations) ? data.course_recommendations.map(course => ({
+        title: course.title || '',
+        provider: course.provider || '',
+        description: course.description || '',
+        level: course.level || '',
+        duration: course.duration || '',
+        match_score: Math.min(100, Math.max(0, course.match_score || 0))
+    })) : [];
+
+    data.certification_recommendations = Array.isArray(data.certification_recommendations) ? 
+        data.certification_recommendations.map(cert => ({
+            title: cert.title || '',
+            provider: cert.provider || '',
+            description: cert.description || '',
+            level: cert.level || '',
+            validity_period: cert.validity_period || '',
+            match_score: Math.min(100, Math.max(0, cert.match_score || 0))
+        })) : [];
+
+    return data;
 };
 
 const AIAnalysis = () => {
@@ -295,13 +322,13 @@ const AIAnalysis = () => {
                 subject: 'Education',
                 A: analysis.education_score || 0,
                 fullMark: 100,
-                description: 'Evaluation of your educational background'
+                description: 'Assessment of your educational background'
             },
             {
                 subject: 'Experience',
                 A: analysis.experience_score || 0,
                 fullMark: 100,
-                description: 'Assessment of your work experience'
+                description: 'Evaluation of your work experience'
             }
         ]);
     }
@@ -459,26 +486,9 @@ const AIAnalysis = () => {
       return { matched_skills: [], missing_skills: [] };
     }
 
-    // Define relevant technical skills and common words to exclude
-    const commonWords = ['using', 'based', 'years', 'skills', 'expert', 'successfully', 'implemented', 'developed', 'leading'];
-    const technicalSkills = ['python', 'react', 'node.js', 'aws', 'docker', 'kubernetes', 
-      'git', 'agile', 'ci/cd', 'microservices', 'testing', 'javascript', 'html', 'css', 
-      'rest', 'api', 'sql', 'database', 'cloud', 'development', 'software', 'engineering',
-      'java', 'spring', 'angular', 'vue', 'typescript', 'mongodb', 'postgresql', 'redis',
-      'elasticsearch', 'kafka', 'rabbitmq', 'graphql', 'react native', 'flutter', 'swift',
-      'kotlin', 'android', 'ios', 'machine learning', 'ai', 'data science', 'devops'];
-
     // Process matched skills
     const matched = Array.isArray(skillsAnalysis.matched_skills) 
-      ? skillsAnalysis.matched_skills
-        .filter(skill => {
-          const skillName = typeof skill === 'string' ? skill.toLowerCase() : skill.name?.toLowerCase();
-          return skillName && 
-                 !commonWords.includes(skillName) &&
-                 (technicalSkills.includes(skillName) || 
-                  technicalSkills.some(tech => skillName.includes(tech)));
-        })
-        .map(skill => {
+      ? skillsAnalysis.matched_skills.map(skill => {
           if (typeof skill === 'string') {
             return {
               name: skill,
@@ -494,37 +504,13 @@ const AIAnalysis = () => {
         })
       : [];
 
-    // Process missing skills
-    const missing = Array.isArray(skillsAnalysis.missing_skills)
-      ? skillsAnalysis.missing_skills
-        .filter(skill => {
-          const skillName = typeof skill === 'string' ? skill.toLowerCase() : skill.name?.toLowerCase();
-          return skillName && 
-                 !commonWords.includes(skillName) &&
-                 (technicalSkills.includes(skillName) || 
-                  technicalSkills.some(tech => skillName.includes(tech)));
-        })
-        .map(skill => ({
-          name: typeof skill === 'string' ? skill : skill.name,
-          required_level: typeof skill === 'object' ? skill.required_level || 'high' : 'high',
-          market_demand: typeof skill === 'object' ? skill.market_demand || 'high' : 'high'
-        }))
-      : [];
-
-    console.log('Processed matched skills:', matched);
-    console.log('Processed missing skills:', missing);
-
-    const result = {
+    return {
       matched_skills: matched,
-      missing_skills: missing,
-      skills_match_score: (matched.length / (matched.length + missing.length)) * 100 || 0
+      missing_skills: []
     };
-
-    console.log('✅ Processed skills analysis result:', result);
-    return result;
   };
 
-  // Update analyzeResume to include detailed logging
+  // Update analyzeResume function
   const analyzeResume = useCallback(async () => {
     if (!location.state?.resumeData) {
         console.log('❌ No resume data provided in location state');
@@ -539,52 +525,18 @@ const AIAnalysis = () => {
         setProgress(0);
 
         console.log('🔄 Starting resume analysis...');
-        console.log('📄 Initial resume data:', location.state.resumeData);
-
-        // Start progress animation
-        progressInterval.current = setInterval(() => {
-            setProgress(prev => {
-                const newProgress = Math.min(prev + 1, 90);
-                console.log(`⏳ Analysis progress: ${newProgress}%`);
-                return newProgress;
-            });
-        }, 500);
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-            console.log('❌ Authentication token missing');
-            throw new Error('Authentication required');
-        }
-
+        
+        // Validate and format request data
         const resumeData = location.state.resumeData;
-        console.log('🔍 Processing resume type:', resumeData.type || 'created');
-        setResumeType(resumeData.type || 'created');
-
-        // Format request data based on resume type
         const requestData = {
             text: resumeData.text || '',
             job_type: resumeData.job_type || resumeData.jobType || '',
             location: resumeData.location || '',
-            type: resumeData.type || 'created',
-            skills: Array.isArray(resumeData.skills) ? resumeData.skills.flatMap(skill => {
-                // Split the skills string by newlines and process each skill
-                return skill.name.split('\n').map(skillStr => {
-                    // Extract skill name, level, and years
-                    const match = skillStr.match(/([^-]+)\s*-\s*(\w+)\s*\((\d+)\s*years?\)/);
-                    if (match) {
-                        return {
-                            name: match[1].trim(),
-                            level: match[2],
-                            yearsOfExperience: parseInt(match[3])
-                        };
-                    }
-                    return {
-                        name: skillStr.trim(),
-                        level: 'Intermediate',
-                        yearsOfExperience: 0
-                    };
-                });
-            }) : [],
+            skills: Array.isArray(resumeData.skills) ? resumeData.skills.map(skill => ({
+                name: skill.name || skill,
+                level: skill.level || 'Intermediate',
+                years: skill.years || 0
+            })) : [],
             education: Array.isArray(resumeData.education) ? resumeData.education.map(edu => ({
                 degree: edu.degree || '',
                 institution: edu.institution || '',
@@ -592,31 +544,19 @@ const AIAnalysis = () => {
                 gpa: edu.gpa || '',
                 honors: edu.honors || ''
             })) : [],
-            experience: [
-                {
-                    title: 'Senior Software Engineer',
-                    company: 'Tech Innovation Corp',
-                    duration: '2019-2023',
-                    description: 'Led development of cloud-native applications, mentored junior developers, and implemented agile methodologies. Reduced cloud costs by 35% through optimization of AWS resources. Introduced Kubernetes for container orchestration, improving system reliability by 99.99%.'
-                },
-                {
-                    title: 'Software Engineer',
-                    company: 'Digital Solutions Inc',
-                    duration: '2015-2018',
-                    description: 'Developed full-stack applications using React and Node.js. Implemented automated testing reducing bugs in production by 70%. Led migration from monolithic to microservices architecture.'
-                }
-            ],
+            experience: Array.isArray(resumeData.experience) ? resumeData.experience.map(exp => ({
+                title: exp.title || '',
+                company: exp.company || '',
+                duration: exp.duration || '',
+                description: exp.description || ''
+            })) : [],
             summary: resumeData.summary || ''
         };
 
-        // Add type-specific fields
-        if (resumeData.type === 'uploaded') {
-            requestData.structure_score = resumeData.structure_score || 0;
-            requestData.formatting = resumeData.formatting || {};
-            requestData.parsed_sections = resumeData.parsed_sections || {};
+        const token = localStorage.getItem('token');
+        if (!token) {
+            throw new Error('Authentication required');
         }
-
-        console.log('📤 Sending analysis request with data:', JSON.stringify(requestData, null, 2));
 
         const response = await fetch('http://localhost:5000/api/resumeanalysis/analyze', {
             method: 'POST',
@@ -629,48 +569,42 @@ const AIAnalysis = () => {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.log('❌ Analysis request failed:', errorData);
             throw new Error(errorData.message || 'Failed to analyze resume');
         }
 
         const data = await response.json();
-        console.log('📥 Received analysis response:', JSON.stringify(data, null, 2));
+        console.log('📥 Received analysis response:', data);
 
         const validatedData = validateAnalysisData(data);
-        console.log('✅ Validated analysis data:', JSON.stringify(validatedData, null, 2));
-
-        // Log specific sections of the analysis
-        console.log('📊 Skills Analysis:', {
-            matched_skills: validatedData.skills_analysis.matched_skills,
-            missing_skills: validatedData.skills_analysis.missing_skills,
-            skills_match_score: validatedData.skills_analysis.skills_match_score
-        });
-
-        console.log('📈 Scores:', {
-            overall: validatedData.overall_score,
-            education: validatedData.education_score,
-            experience: validatedData.experience_score,
-            text_quality: validatedData.text_quality
-        });
-
-        console.log('💡 Recommendations:', {
-            jobs: validatedData.job_recommendations,
-            courses: validatedData.course_recommendations,
-            certifications: validatedData.certification_recommendations
-        });
+        console.log('✅ Validated analysis data:', validatedData);
 
         setAnalysis(validatedData);
         setProgress(100);
-        console.log('✨ Analysis complete!');
 
     } catch (error) {
         console.error('Error in analyzeResume:', error);
-        setError('Failed to analyze resume: ' + error.message);
+        setError(error.message || 'Failed to analyze resume');
     } finally {
-        clearInterval(progressInterval.current);
         setLoading(false);
+        if (progressInterval.current) {
+            clearInterval(progressInterval.current);
+        }
     }
 }, [location.state?.resumeData]);
+
+  // Function to determine skill level based on experience and skills
+  const determineSkillLevel = (analysis) => {
+    if (!analysis) return 'Unknown';
+
+    const { experience_score, skills_analysis, education_score } = analysis;
+    const skillsScore = skills_analysis?.skills_match_score || 0;
+    const avgScore = (experience_score + skillsScore + education_score) / 3;
+
+    if (avgScore >= 85) return 'Expert';
+    if (avgScore >= 70) return 'Senior';
+    if (avgScore >= 50) return 'Intermediate';
+    return 'Entry Level';
+  };
 
   // Render skills section
   const renderSkillsSection = () => {
@@ -1341,122 +1275,116 @@ const AIAnalysis = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" component="h1">
           Resume Analysis Results
-          {resumeType && (
-            <Chip
-              label={resumeType === 'created' ? 'Created Resume' : 'Uploaded Resume'}
-              color="primary"
-              size="small"
-              sx={{ ml: 2 }}
-            />
-          )}
         </Typography>
         <Box>
           <Tooltip title="Share Analysis">
-            <IconButton onClick={handleShare}>
-              <ShareIcon />
-            </IconButton>
+            <IconButton onClick={handleShare}><ShareIcon /></IconButton>
           </Tooltip>
           <Tooltip title="Download Report">
-            <IconButton onClick={handleDownload}>
-              <DownloadIcon />
-            </IconButton>
+            <IconButton onClick={handleDownload}><DownloadIcon /></IconButton>
           </Tooltip>
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* Overall Score Card */}
-        <Grid item xs={12} md={4}>
-          <MetricCard elevation={3}>
-            <Typography variant="h6" gutterBottom>
-              Overall Score
-            </Typography>
-            <Box sx={{ position: 'relative', display: 'inline-flex', mt: 2 }}>
+      {/* Top Metrics Section */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={3}>
+          <MetricCard>
+            <Typography variant="h6">Overall Score</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
               <CircularProgress
                 variant="determinate"
-                value={analysis.overall_score || 0}
+                value={analysis?.overall_score || 0}
                 size={80}
                 thickness={4}
-                color="primary"
               />
-              <Box
-                sx={{
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  position: 'absolute',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Typography variant="h5" component="div">
-                  {analysis.overall_score || 0}%
-                </Typography>
-              </Box>
+              <Typography variant="h4" sx={{ position: 'absolute' }}>
+                {analysis?.overall_score || 0}%
+              </Typography>
             </Box>
           </MetricCard>
         </Grid>
-
-        {/* Text Quality Card */}
-        <Grid item xs={12} md={4}>
-          <MetricCard elevation={3}>
-            <Typography variant="h6" gutterBottom>
-              Text Quality
-            </Typography>
-            <Box sx={{ mt: 2 }}>
+        <Grid item xs={12} md={3}>
+          <MetricCard>
+            <Typography variant="h6">Text Quality</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+              <CircularProgress
+                variant="determinate"
+                value={analysis?.text_quality?.score || 0}
+                size={80}
+                thickness={4}
+              />
+              <Typography variant="h4" sx={{ position: 'absolute' }}>
+                {analysis?.text_quality?.score || 0}%
+              </Typography>
+            </Box>
+          </MetricCard>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <MetricCard>
+            <Typography variant="h6">Skills Match</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+              <CircularProgress
+                variant="determinate"
+                value={analysis?.skills_analysis?.skills_match_score || 0}
+                size={80}
+                thickness={4}
+              />
+              <Typography variant="h4" sx={{ position: 'absolute' }}>
+                {analysis?.skills_analysis?.skills_match_score || 0}%
+              </Typography>
+            </Box>
+          </MetricCard>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <MetricCard>
+            <Typography variant="h6">Skill Level</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
               <Typography variant="h5" color="primary">
-                {analysis.text_quality?.score || 0}%
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Readability: {analysis.text_quality?.readability || 'N/A'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Clarity: {analysis.text_quality?.clarity || 'N/A'}
+                {determineSkillLevel(analysis)}
               </Typography>
             </Box>
           </MetricCard>
         </Grid>
+      </Grid>
 
-        {/* Skills Match Card */}
-        <Grid item xs={12} md={4}>
-          <MetricCard elevation={3}>
-            <Typography variant="h6" gutterBottom>
-              Skills Match
-            </Typography>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h5" color="primary">
-                {analysis.skills_analysis?.skills_match_score || 0}%
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Industry Match
-              </Typography>
-            </Box>
-          </MetricCard>
-        </Grid>
-
-        {/* Resume Structure Analysis (Only for uploaded resumes) */}
-        {renderStructureAnalysis()}
-
-        {/* Skills Analysis Chart */}
+      {/* Radar Chart */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <AssessmentIcon />
-              Skills Analysis
-            </Typography>
-            <Box sx={{ width: '100%', height: 400 }}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Performance Analysis</Typography>
+            <Box sx={{ height: 400 }}>
               <ResponsiveContainer>
-                <RadarChart data={radarData}>
+                <RadarChart data={[
+                  {
+                    subject: 'Experience',
+                    score: analysis?.experience_score || 0,
+                    fullMark: 100
+                  },
+                  {
+                    subject: 'Education',
+                    score: analysis?.education_score || 0,
+                    fullMark: 100
+                  },
+                  {
+                    subject: 'Text Quality',
+                    score: analysis?.text_quality?.score || 0,
+                    fullMark: 100
+                  },
+                  {
+                    subject: 'Skills Match',
+                    score: analysis?.skills_analysis?.skills_match_score || 0,
+                    fullMark: 100
+                  }
+                ]}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="subject" />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} />
                   <Radar
                     name="Score"
-                    dataKey="A"
-                    stroke={theme.palette.primary.main}
-                    fill={theme.palette.primary.main}
+                    dataKey="score"
+                    stroke="#8884d8"
+                    fill="#8884d8"
                     fillOpacity={0.6}
                   />
                 </RadarChart>
@@ -1464,72 +1392,133 @@ const AIAnalysis = () => {
             </Box>
           </Paper>
         </Grid>
+      </Grid>
 
-        {/* Detailed Skills Analysis */}
-        <Grid item xs={12}>
-          <Paper elevation={3} sx={{ p: 3 }}>
-            {renderSkillsSection()}
+      {/* Skills Analysis */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Your Technical Skills</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {analysis?.skills_analysis?.matched_skills?.map((skill, index) => (
+                <Chip
+                  key={index}
+                  label={typeof skill === 'string' ? skill : skill.name}
+                  color="primary"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
           </Paper>
         </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>Suggested Skills</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {analysis?.skills_analysis?.suggested_skills?.map((skill, index) => (
+                <Chip
+                  key={index}
+                  label={skill}
+                  color="secondary"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
-        {/* Job Recommendations */}
+      {/* Recommendations */}
+      <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>Recommendations</Typography>
+      
+      {/* Job Recommendations */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom sx={{ mt: 4, mb: 2 }}>
-            <WorkIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Recommended Jobs {analysis.location ? `in ${analysis.location}` : ''}
-          </Typography>
-          {renderRecommendations()}
-        </Grid>
-
-        {/* Skills Details */}
-        <Grid item xs={12} md={6}>
-          <MetricCard elevation={3}>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              <CheckCircleIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Matched Skills
+              <WorkIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+              Recommended Jobs
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {(analysis?.skills_analysis?.matched_skills || []).map((skill, index) => (
-                <Chip
-                  key={index}
-                  label={typeof skill === 'string' ? skill : `${skill.name} (${skill.level || 'N/A'})`}
-                  color="success"
-                  variant="outlined"
-                  sx={{ mb: 1 }}
-                />
+            <List>
+              {analysis?.job_recommendations?.map((job, index) => (
+                <ListItem key={index} divider>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1">{job.title}</Typography>
+                        <Chip label={job.company} size="small" color="primary" />
+                      </Box>
+                    }
+                    secondary={
+                      <>
+                        <Typography variant="body2" color="text.secondary">
+                          {job.description}
+                        </Typography>
+                        <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
+                          <Chip label={`${job.match_score}% Match`} size="small" color="success" />
+                          <Chip label={job.location} size="small" variant="outlined" />
+                        </Box>
+                      </>
+                    }
+                  />
+                </ListItem>
               ))}
-              {(!analysis?.skills_analysis?.matched_skills || analysis.skills_analysis.matched_skills.length === 0) && (
-                <Typography variant="body2" color="text.secondary">
-                  No matched skills found. Try adding more relevant skills to your resume.
-                </Typography>
-              )}
-            </Box>
-          </MetricCard>
+            </List>
+          </Paper>
         </Grid>
+      </Grid>
 
+      {/* Certifications and Courses */}
+      <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <MetricCard elevation={3}>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              <WarningIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-              Suggested Skills
+              <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+              Recommended Certifications
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {(analysis?.skills_analysis?.missing_skills || []).map((skill, index) => (
-                <Chip
-                  key={index}
-                  label={typeof skill === 'string' ? skill : `${skill.name} (${skill.demand || 'High'})`}
-                  color="info"
-                  variant="outlined"
-                  sx={{ mb: 1 }}
-                />
+            <List>
+              {analysis?.certification_recommendations?.map((cert, index) => (
+                <ListItem key={index} divider>
+                  <ListItemText
+                    primary={cert.title}
+                    secondary={
+                      <>
+                        <Typography variant="body2">{cert.provider}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {cert.description}
+                        </Typography>
+                      </>
+                    }
+                  />
+                </ListItem>
               ))}
-              {(!analysis?.skills_analysis?.missing_skills || analysis.skills_analysis.missing_skills.length === 0) && (
-                <Typography variant="body2" color="text.secondary">
-                  Great job! You have all the required skills.
-                </Typography>
-              )}
-            </Box>
-          </MetricCard>
+            </List>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              <SchoolIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+              Recommended Courses
+            </Typography>
+            <List>
+              {analysis?.course_recommendations?.map((course, index) => (
+                <ListItem key={index} divider>
+                  <ListItemText
+                    primary={course.title}
+                    secondary={
+                      <>
+                        <Typography variant="body2">{course.provider}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {course.description}
+                        </Typography>
+                      </>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
         </Grid>
       </Grid>
     </AnalysisContainer>

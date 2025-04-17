@@ -252,7 +252,7 @@ router.post("/forgot-password", authLimiter, async (req, res) => {
 });
 
 // Reset Password Route
-router.post("/reset-password/:token", authLimiter, async (req, res) => {
+router.post("/reset-password/:token", async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
@@ -273,6 +273,14 @@ router.post("/reset-password/:token", authLimiter, async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
+    // Validate password format before hashing
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ 
+        message: "Password must contain at least 8 characters, including uppercase, lowercase, numbers and special characters" 
+      });
+    }
+
     // Hash new password
     const salt = await bcryptjs.genSalt(12);
     const hashedPassword = await bcryptjs.hash(password, salt);
@@ -281,7 +289,9 @@ router.post("/reset-password/:token", authLimiter, async (req, res) => {
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
-    await user.save();
+    
+    // Save without validation
+    await user.save({ validateBeforeSave: false });
 
     // Notify user of password change
     const mailOptions = {
@@ -290,18 +300,17 @@ router.post("/reset-password/:token", authLimiter, async (req, res) => {
         address: process.env.EMAIL_USER
       },
       to: user.email,
-      subject: "Password Changed Successfully - CareerSphere",
+      subject: 'Password Reset Successful',
       html: `
-        <h1>Password Changed</h1>
-        <p>Your password has been successfully changed.</p>
+        <h1>Password Reset Successful</h1>
+        <p>Your password has been successfully reset.</p>
         <p>If you did not make this change, please contact support immediately.</p>
-        <p>Best regards,<br>CareerSphere Team</p>
       `
     };
 
     await transporter.sendMail(mailOptions);
+    res.json({ message: "Password reset successful" });
 
-    res.json({ message: "Password has been reset successfully" });
   } catch (err) {
     console.error("Reset Password Error:", err);
     res.status(500).json({ message: "Error resetting password" });

@@ -73,7 +73,7 @@ UserSchema.index({ resetPasswordToken: 1 }, { sparse: true });
 UserSchema.pre('validate', function(next) {
   // Only validate password if it's being modified
   if (this.isModified('password')) {
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passwordRegex.test(this.password)) {
       this.invalidate('password', 'Password must contain at least 8 characters, including uppercase, lowercase, numbers and special characters');
     }
@@ -84,7 +84,7 @@ UserSchema.pre('validate', function(next) {
 // Update password and reset attempts
 UserSchema.methods.updatePassword = async function(newPassword) {
   // Validate password before updating
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
   if (!passwordRegex.test(newPassword)) {
     throw new Error('Password must contain at least 8 characters, including uppercase, lowercase, numbers and special characters');
   }

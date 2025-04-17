@@ -656,7 +656,7 @@ def calculate_overall_score(text_quality, recommendations):
         )
         
         return min(100, max(0, score))
-        
+
     except Exception as e:
         logger.error(f"Error in calculate_overall_score: {str(e)}")
         return 0
